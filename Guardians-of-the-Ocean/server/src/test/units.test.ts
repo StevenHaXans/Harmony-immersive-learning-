@@ -148,4 +148,8 @@ test("possible emergencies lead with 'go to a health facility now'", async () =>
   const r = await agent.answer("my baby is having fits and is not breathing well", 440);
   assert.match(r.text, /^This may be an emergency: go to the nearest health facility now/);
   assert.ok(r.text.length <= 440);
+  // "drink" must not pull in the safe-water lesson: emergencies get the danger signs.
+  const fits = await agent.answer("My brother has fits and cannot drink", 440);
+  assert.match(fits.text, /Danger signs: go to a health facility now/);
+  assert.doesNotMatch(fits.text, /Safe water/);
 });

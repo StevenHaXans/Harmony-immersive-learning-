@@ -82,7 +82,7 @@ export const LESSONS: Lesson[] = [
   {
     id: "danger-signs",
     title: "Danger signs",
-    keywords: ["danger", "emergency", "clinic", "hospital", "sick", "baby", "child", "breathing", "fits"],
+    keywords: ["cannot drink", "can't drink", "not drinking", "danger", "emergency", "clinic", "hospital", "sick", "baby", "child", "breathing", "fits"],
     ussd: "Go to a health facility now if someone can't drink, vomits everything, is very sleepy, has fits, or a young baby has fever.",
     sms: "Harmony lesson - Danger signs: go to a health facility now if someone cannot drink or breastfeed, vomits everything, is very sleepy or hard to wake, has fits, has blood in their stool, or breathes very fast. A baby under 2 months with fever also needs care now. Reply AGENT for a health guide.",
     voice: "Today's lesson is about danger signs. Go to a health facility straight away if someone cannot drink or breastfeed, vomits everything, is very sleepy or hard to wake, has fits, has blood in their stool, or is breathing very fast. A baby under two months with a fever also needs care now.",

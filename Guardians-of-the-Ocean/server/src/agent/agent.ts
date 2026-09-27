@@ -1,6 +1,6 @@
 import type { Env } from "../env.js";
 import { fitTo, plainText, toGsm7 } from "../lib/text.js";
-import { EMERGENCY, matchLesson } from "./lessons.js";
+import { EMERGENCY, LESSONS, matchLesson } from "./lessons.js";
 
 /**
  * The learning agent every channel talks to. It asks Aqua Ask (RAG over the OneAquaHealth
@@ -60,8 +60,10 @@ export class Agent {
     // Possible emergencies get the safety instruction first, whatever else the answer says.
     if (EMERGENCY.test(q)) {
       const lead = "This may be an emergency: go to the nearest health facility now or call your local emergency number. ";
-      const rest = await this.answerInner(q, Math.max(60, maxChars - lead.length), opts);
-      return { ...rest, text: fitTo(lead + rest.text, maxChars) };
+      // Follow with the vetted danger-signs lesson rather than retrieval, which can drift off topic.
+      const signs = LESSONS.find((l) => l.id === "danger-signs")!;
+      const body = maxChars <= 200 ? signs.ussd : signs.sms.replace(/^Harmony lesson - /, "");
+      return { text: fitTo(lead + body, maxChars), via: "lessons", source: `Harmony lesson: ${signs.title}` };
     }
     return this.answerInner(q, maxChars, opts);
   }
