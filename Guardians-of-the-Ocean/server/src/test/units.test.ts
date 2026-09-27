@@ -126,8 +126,9 @@ test("lessons fit their channels and use GSM-7 only", () => {
     assert.ok(quizText(l, "ussd").length <= USSD_MAX - 4, `${l.id} quiz`);
     assert.ok(isGsm7(quizText(l, "sms")));
   }
-  assert.equal(matchLesson("how do I make river water safe to drink?")?.id, "clean-water");
-  assert.equal(matchLesson("tell me about mangroves")?.id, "mangroves");
+  assert.equal(matchLesson("how do I make river water safe to drink?")?.id, "safe-water");
+  assert.equal(matchLesson("how can I prevent malaria?")?.id, "malaria");
+  assert.equal(matchLesson("my child has cholera symptoms")?.id, "cholera");
   assert.equal(matchLesson("what is the capital of France"), null);
 });
 
@@ -139,5 +140,12 @@ test("off-topic research answers fall back to the vetted lesson", async () => {
   const reply = await agent.answer("Is it safe to drink river water?", 440);
   assert.equal(reply.via, "lessons");
   assert.match(reply.text, /^Safe water: water that looks clear/);
-  assert.equal((await agent.answer("Why do corals bleach?", 440)).via, "aqua");
+  assert.equal((await agent.answer("What are the signs of cholera?", 440)).via, "aqua");
+});
+
+test("possible emergencies lead with 'go to a health facility now'", async () => {
+  const agent = new Agent(testEnv(), fakeFetch(aquaRoutes).impl);
+  const r = await agent.answer("my baby is having fits and is not breathing well", 440);
+  assert.match(r.text, /^This may be an emergency: go to the nearest health facility now/);
+  assert.ok(r.text.length <= 440);
 });

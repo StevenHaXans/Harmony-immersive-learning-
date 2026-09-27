@@ -180,7 +180,7 @@ export class Payments {
         currency: country.currency,
         walletCode: wallet.pawapay,
         reference: this.env.MPESA_ACCOUNT_REF,
-        description: "Harmony coast",
+        description: "HarmonyHealth",
       });
       const updated = await this.store.updatePayment(payment.id, {
         providerRef: pushed.providerRef,
@@ -273,7 +273,7 @@ export class Payments {
     if (p.status === "paid") {
       const ref = p.receipt ? ` Ref ${p.receipt}.` : "";
       const thanks = THANKS[p.country] ?? "Thank you!";
-      await this.messenger.sendSms(p.phone, `${thanks} ${amount} received via ${label}.${ref} Your support helps plant mangroves and restore Africa's coasts. - Harmony`);
+      await this.messenger.sendSms(p.phone, `${thanks} ${amount} received via ${label}.${ref} Your support trains community health guides and keeps water safe. - Harmony`);
       return;
     }
     // Web users see the result on screen; feature-phone users need to hear back.

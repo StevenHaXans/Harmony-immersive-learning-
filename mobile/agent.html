@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#03121a">
 <meta name="robots" content="noindex">
-<title>Harmony Guide Desk</title>
+<title>Harmony Health Guide Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
 <header class="appbar">
   <a class="brand" href="./">
     <span class="brand-mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#022028" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span>
-    <span>Guide desk<small>Harmony Mobile</small></span>
+    <span>Health guide desk<small>Harmony Health</small></span>
   </a>
   <span class="appbar-spacer"></span>
   <span class="pill" id="live"><span class="dot"></span><span>Auto-refresh</span></span>
@@ -47,7 +47,7 @@
   <div id="desk" class="hidden">
     <div class="desk-head">
       <div>
-        <h1>Students waiting for a guide</h1>
+        <h1>People waiting for a health guide</h1>
         <p>Reply here and it goes out as an SMS. Guides can also reply from their own phone with <code>R CODE message</code>.</p>
       </div>
       <div class="stats">
@@ -61,7 +61,7 @@
       <button class="sim-line" type="button" data-filter="answered" aria-pressed="false">Answered</button>
       <button class="sim-line" type="button" data-filter="all" aria-pressed="false">All</button>
       <span style="flex:1"></span>
-      <button class="btn small ghost" type="button" id="broadcast">Send today's lesson to all subscribers</button>
+      <button class="btn small ghost" type="button" id="broadcast">Send today's health tip to all subscribers</button>
     </div>
     <div class="alert ok" id="deskMsg" role="status"></div>
     <div class="console-grid" id="tickets" aria-live="polite"></div>
@@ -191,7 +191,7 @@
   });
 
   $('broadcast').addEventListener('click', async function () {
-    if (!confirm('Send the next lesson by SMS to every subscribed student?')) return;
+    if (!confirm('Send the next health tip by SMS to every subscriber?')) return;
     this.disabled = true;
     try {
       var res = await api('POST', '/api/admin/broadcast', {});

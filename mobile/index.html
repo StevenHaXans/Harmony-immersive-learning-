@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#03121a">
-<meta name="description" content="Learn about the ocean from any phone, anywhere in Africa: SMS, USSD, voice or the web. Ask questions, get lessons, and support coastal restoration with mobile money or card.">
-<title>Harmony Mobile</title>
+<meta name="description" content="Health help on any phone, anywhere in Africa: daily health tips by SMS, a USSD menu, a voice line, an AI health guide and real health guides. Support community health with mobile money or card.">
+<title>Harmony Health</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -30,13 +30,13 @@
 <div class="shell layout">
   <main id="main">
     <section class="hero" aria-labelledby="heroTitle">
-      <img class="hero-bg" src="../Guardians-of-the-Ocean/assets/images/cities/mombasa.webp" alt="" fetchpriority="high">
+      <img class="hero-bg" src="../Aqua-ask-/h2o-assets/aquaask-bg-2.jpg" alt="" fetchpriority="high">
       <span class="eyebrow">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
         No smartphone or data needed
       </span>
-      <h1 id="heroTitle">Learn the ocean from <em>any phone.</em></h1>
-      <p>Daily lessons by SMS, a USSD menu, a voice line and an AI guide that answers questions. Support coastal restoration with M-Pesa, MTN MoMo, Airtel, Orange Money or card in <b id="countryCount">20</b> African countries.</p>
+      <h1 id="heroTitle">Health help on <em>any phone.</em></h1>
+      <p>Daily health tips by SMS, a USSD menu and a voice line. An AI health guide answers questions and real health guides call back. Support community health with M-Pesa, MTN MoMo, Airtel, Orange Money or card in <b id="countryCount">20</b> African countries.</p>
       <div class="channels">
         <button class="channel code" type="button" data-copy="ussd" aria-label="Copy the USSD code">
           <span>Dial USSD</span><strong id="ussdCode">*384*2026#</strong>
@@ -48,7 +48,7 @@
           <span>Voice line</span><strong id="voiceNumber">Call Harmony</strong>
         </a>
         <a class="channel" href="#ask">
-          <span>On the web</span><strong>Ask the guide</strong>
+          <span>On the web</span><strong>Ask a health guide</strong>
         </a>
       </div>
     </section>
@@ -77,8 +77,8 @@
     <section class="panel active" id="panel-learn" role="tabpanel" aria-labelledby="tab-learn">
       <div class="card" id="joinCard">
         <form id="joinForm" novalidate>
-          <h2>Get a lesson a day by SMS</h2>
-          <p class="lede">Short, 2-minute lessons about mangroves, coral, floods and safe water. Free to receive, works on any phone.</p>
+          <h2>Get a health tip a day by SMS</h2>
+          <p class="lede">Short tips on safe water, handwashing, cholera, ORS, malaria and danger signs. Free to receive, works on any phone.</p>
           <label class="field">
             <span>Phone number</span>
             <div class="input-wrap">
@@ -90,43 +90,43 @@
             <label class="field"><span>First name <em>optional</em></span><input class="input" id="joinName" name="name" autocomplete="given-name" maxlength="40" placeholder="Amina"></label>
             <label class="field"><span>School <em>optional</em></span><input class="input" id="joinSchool" name="school" maxlength="60" placeholder="Likoni Primary"></label>
           </div>
-          <button class="btn block" type="submit" id="joinBtn"><span class="spin" aria-hidden="true"></span><span>Send my first lesson</span></button>
-          <p class="note">Text <b>STOP</b> to <b data-sms-code>22384</b> any time to quit. We only use your number for Harmony lessons.</p>
+          <button class="btn block" type="submit" id="joinBtn"><span class="spin" aria-hidden="true"></span><span>Send my first tip</span></button>
+          <p class="note">Text <b>STOP</b> to <b data-sms-code>22384</b> any time to quit. We only use your number for Harmony health tips.</p>
           <div class="alert err" id="joinErr" role="alert"></div>
         </form>
         <div class="success-burst" id="joinOk" aria-live="polite">
           <div class="check"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
           <h2 id="joinOkTitle">You're in!</h2>
-          <p class="lede" id="joinOkText">Your first lesson is on its way by SMS.</p>
+          <p class="lede" id="joinOkText">Your first tip is on its way by SMS.</p>
           <button class="btn ghost small" type="button" id="joinAgain">Add another number</button>
         </div>
       </div>
 
-      <div class="section-title"><h2>This week's lessons</h2><span id="lessonCount"></span></div>
-      <div class="lessons" id="lessons" tabindex="0" aria-label="Lessons, scroll sideways"></div>
+      <div class="section-title"><h2>Health tips</h2><span id="lessonCount"></span></div>
+      <div class="lessons" id="lessons" tabindex="0" aria-label="Health tips, scroll sideways"></div>
 
       <div class="section-title"><h2>Three ways, no internet</h2></div>
       <div class="ways">
         <div class="way">
           <div class="way-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg></div>
           <h3>USSD menu</h3>
-          <p>Dial <code data-ussd-code>*384*2026#</code> for lessons, quizzes, questions, a guide call-back and M-Pesa support.</p>
+          <p>Dial <code data-ussd-code>*384*2026#</code> for health tips, quizzes, questions, a health-guide call-back and mobile-money support.</p>
         </div>
         <div class="way">
           <div class="way-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"/></svg></div>
           <h3>SMS commands</h3>
           <dl class="cmds">
-            <dt>LESSON</dt><dd>next lesson</dd>
+            <dt>LESSON</dt><dd>next health tip</dd>
             <dt>QUIZ</dt><dd>test yourself</dd>
             <dt>ASK …</dt><dd>ask anything</dd>
-            <dt>AGENT</dt><dd>talk to a person</dd>
-            <dt>PAY 100</dt><dd>support the coast</dd>
+            <dt>AGENT</dt><dd>talk to a health guide</dd>
+            <dt>PAY 100</dt><dd>support community health</dd>
           </dl>
         </div>
         <div class="way">
           <div class="way-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></div>
           <h3>Voice line</h3>
-          <p>Call and use the keypad, or <b>just say your question</b>. The answer arrives by SMS. Press 3 to reach a guide.</p>
+          <p>Call and use the keypad, or <b>just say your question</b>. The answer arrives by SMS. Press 3 to reach a health guide.</p>
         </div>
       </div>
     </section>
@@ -135,14 +135,14 @@
     <section class="panel" id="panel-ask" role="tabpanel" aria-labelledby="tab-ask">
       <div class="chat">
         <div class="card">
-          <h2>Ask the Harmony guide</h2>
-          <p class="lede" style="margin:0">The same AI guide answers on SMS, USSD and the voice line. Answers come from ocean and river-health research, with sources.</p>
+          <h2>Ask the Harmony health guide</h2>
+          <p class="lede" style="margin:0">The same AI guide answers on SMS, USSD and the voice line, from water-and-health research and reviewed health tips. General information, not a diagnosis: in an emergency, go to the nearest health facility.</p>
         </div>
         <div class="chips" id="suggestions">
-          <button class="chip" type="button">Why do corals bleach?</button>
-          <button class="chip" type="button">How do mangroves stop erosion?</button>
           <button class="chip" type="button">Is river water safe to drink?</button>
-          <button class="chip" type="button">What is One Health?</button>
+          <button class="chip" type="button">What are the signs of cholera?</button>
+          <button class="chip" type="button">How do I make ORS at home?</button>
+          <button class="chip" type="button">How can I prevent malaria?</button>
         </div>
         <div class="thread" id="thread" aria-live="polite"></div>
 
@@ -159,12 +159,12 @@
 
         <div class="card human">
           <span class="avatar"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></span>
-          <div style="flex:1;min-width:0"><h3>Prefer a person?</h3><p class="note" style="margin:0">A Harmony guide calls you back for free, even on a basic phone.</p></div>
+          <div style="flex:1;min-width:0"><h3>Prefer a person?</h3><p class="note" style="margin:0">A Harmony health guide calls you back for free, even on a basic phone.</p></div>
           <button class="btn small" type="button" id="openHuman">Call me</button>
         </div>
 
         <form class="composer" id="askForm">
-          <input id="askInput" type="text" maxlength="500" placeholder="Ask about the ocean, rivers or safe water…" aria-label="Your question" autocomplete="off">
+          <input id="askInput" type="text" maxlength="500" placeholder="Ask about safe water, cholera, malaria…" aria-label="Your question" autocomplete="off">
           <button class="send" type="submit" id="askSend" aria-label="Send question" disabled>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
@@ -176,10 +176,10 @@
     <section class="panel" id="panel-support" role="tabpanel" aria-labelledby="tab-support">
       <div class="card">
         <div class="fund">
-          <img src="../Guardians-of-the-Ocean/assets/images/cities/mombasa-sm.webp" alt="Mangrove coastline">
+          <img src="../Aqua-ask-/h2o-assets/aquaask-bg-3.jpg" alt="Clean water">
           <div>
-            <h2>Coastal Africa restoration</h2>
-            <p>Mangroves, reefs and clean-ups · Mombasa, Lagos, Cape Town and more</p>
+            <h2>Community health fund</h2>
+            <p>Health guides, safe water and hygiene kits · across Africa</p>
           </div>
         </div>
         <div class="meter" role="progressbar" aria-label="Raised by mobile money" aria-valuemin="0" aria-valuemax="100" id="meter"><i id="meterFill"></i></div>
@@ -215,7 +215,7 @@
           </p>
         </form>
       </div>
-      <p class="note" style="text-align:center">85% goes to field teams planting and protecting mangroves · 15% runs the programme.</p>
+      <p class="note" style="text-align:center">85% goes to community health work · 15% runs the programme.</p>
     </section>
 
     <!-- ───────── PHONE (mobile only; desktop shows it in the rail) ───────── -->
@@ -261,8 +261,8 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
     </button>
     <form id="humanForm" novalidate>
-      <h2 id="humanTitle" style="font:600 22px/1.2 var(--display);margin:4px 0 6px">Talk to a Harmony guide</h2>
-      <p class="lede">We'll call your phone for free. If no guide is free, they'll reply by SMS.</p>
+      <h2 id="humanTitle" style="font:600 22px/1.2 var(--display);margin:4px 0 6px">Talk to a Harmony health guide</h2>
+      <p class="lede">We'll call your phone for free. If no health guide is free, they'll reply by SMS. In an emergency, go to the nearest health facility.</p>
       <label class="field">
         <span>Your phone number</span>
         <div class="input-wrap">
@@ -272,14 +272,14 @@
       </label>
       <label class="field">
         <span>What do you need help with? <em>optional</em></span>
-        <input class="input" id="humanQuestion" maxlength="300" placeholder="e.g. Our school well smells bad">
+        <input class="input" id="humanQuestion" maxlength="300" placeholder="e.g. My child has had diarrhoea since yesterday">
       </label>
       <button class="btn block" type="submit" id="humanBtn"><span class="spin" aria-hidden="true"></span><span>Call me back</span></button>
       <div class="alert err" id="humanErr" role="alert"></div>
     </form>
     <div class="success-burst" id="humanOk" aria-live="polite">
       <div class="check"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-      <h2 id="humanOkTitle" style="font:600 22px/1.2 var(--display);margin:0 0 6px">A guide will call you</h2>
+      <h2 id="humanOkTitle" style="font:600 22px/1.2 var(--display);margin:0 0 6px">A health guide will call you</h2>
       <p class="lede" id="humanOkText"></p>
       <button class="btn ghost small" type="button" data-close>Done</button>
     </div>

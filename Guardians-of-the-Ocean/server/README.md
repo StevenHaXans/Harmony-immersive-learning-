@@ -3,8 +3,8 @@
 Node/Express + Prisma/PostgreSQL service behind Immersive Learning. It handles:
 
 - **Card payments** through Stripe Checkout (the original service). Fulfillment still happens only in the webhook handler, never from the success URL.
-- **Mobile money across Africa**: **pawaPay** carries 20 countries through one API (M-Pesa, MTN MoMo, Airtel, Orange, Vodacom, Moov, Free, Yas/Tigo, Halotel, TNM, Zamtel...). In Kenya, M-Pesa Express (Daraja) and Airtel Money can also run direct.
-- **Students on any phone, in any supported country**: two-way SMS, a USSD menu and a voice IVR through Africa's Talking. Numbers, currencies and wallets are per country (`src/lib/countries.ts`).
+- **Mobile money across Africa**: Kenyan **M-Pesa goes through Safaricom Daraja** (M-Pesa Express / STK push). **pawaPay** carries the other wallets in 20 countries through one API (MTN MoMo, Airtel, Orange, Vodacom M-Pesa, Moov, Free, Yas/Tigo, Halotel, TNM, Zamtel...). Kenyan Airtel Money can also run direct.
+- **Health help on any phone, in any supported country**: daily health tips, quizzes and questions over two-way SMS, a USSD menu and a voice IVR (Africa's Talking; Click Mobile as the fallback gateway). Numbers, currencies and wallets are per country (`src/lib/countries.ts`). Health content is general guidance (safe water, handwashing, cholera, ORS, malaria, danger signs), not a diagnosis. Possible emergencies are always told to go to a health facility first.
 - **The learning agent**: one brain for every channel. It asks Aqua Ask (RAG over the research library), falls back to built-in lessons, and hands off to a **human guide** by SMS relay or a free call-back.
 
 The student web app is `/mobile/` at the repo root. The guide desk is `/mobile/agent.html`.
@@ -63,8 +63,9 @@ See `.env.example` for the full list. The main groups:
 
 | Need | Primary | Fallback / alternative |
 | --- | --- | --- |
-| SMS, USSD, voice | Click Mobile, once its API and keys are issued (no public docs or sandbox yet) | **Africa's Talking**: self-serve, sandbox, multi-country. What the code uses today. |
-| Mobile money | Click Mobile mobile money, if it supports STK / USSD push | **pawaPay** in 20 countries. Kenya can also use Daraja and Airtel direct. |
+| SMS, USSD, voice | **Africa's Talking**: self-serve, sandbox, multi-country | **Click Mobile** as the fallback gateway, once its API and keys are issued (no public docs or sandbox yet). The `Messenger` interface is where it plugs in. |
+| M-Pesa (Kenya) | **Safaricom Daraja**, M-Pesa Express STK push | none (practice mode in development) |
+| Other mobile money | **pawaPay** in 20 countries | Airtel Kenya direct |
 | Cards | Stripe | none |
 
 Routing per payment: the wallet's direct rail if it's configured, then pawaPay, then practice mode (only while `DEV_TOOLS` is on).

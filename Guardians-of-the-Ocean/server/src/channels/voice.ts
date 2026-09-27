@@ -34,7 +34,7 @@ export interface VoiceRequest {
 }
 
 const MENU =
-  "Press 1 for today's lesson. Press 2 to ask a question. Press 3 to speak to a Harmony guide. Press 4 to support the coast with mobile money.";
+  "Press 1 for today's health tip. Press 2 to ask a health question. Press 3 to speak to a Harmony health guide. Press 4 to support community health with mobile money.";
 
 function studentPhone(req: VoiceRequest): string {
   const raw = String(req.direction ?? "").toLowerCase() === "outbound" ? req.destinationNumber : req.callerNumber;
@@ -52,13 +52,13 @@ export async function handleVoiceCall(deps: Deps, base: string, req: VoiceReques
 
   if (String(req.clientRequestId ?? "").startsWith("agent:")) {
     if (!deps.desk.hasGuides) {
-      return response(say("Hello from Harmony. All guides are busy right now, so a guide will reply to you by SMS. Goodbye."));
+      return response(say("Hello from Harmony Health. All health guides are busy right now, so a guide will reply to you by SMS. Goodbye."));
     }
-    return response(say("Hello from Harmony. Connecting you to a guide now. Please hold."), dial(deps.env.agentPhones));
+    return response(say("Hello from Harmony Health. Connecting you to a health guide now. Please hold."), dial(deps.env.agentPhones));
   }
 
   await deps.store.upsertStudent(phone);
-  return menu(base, "Welcome to Harmony, learning about the ocean. ");
+  return menu(base, "Welcome to Harmony Health. ");
 }
 
 export async function handleVoiceMenu(deps: Deps, base: string, req: VoiceRequest): Promise<string> {
@@ -73,7 +73,7 @@ export async function handleVoiceMenu(deps: Deps, base: string, req: VoiceReques
       await deps.store.upsertStudent(phone, { lessonIndex: student.lessonIndex + 1 });
       return response(
         say(lesson.voice),
-        getDigits(`Press 1 for the next lesson, or 9 for the main menu.`, { callbackUrl: `${base}/voice/menu`, numDigits: 1 })
+        getDigits(`Press 1 for the next tip, or 9 for the main menu.`, { callbackUrl: `${base}/voice/menu`, numDigits: 1 })
       );
     }
     case "2":
@@ -86,9 +86,9 @@ export async function handleVoiceMenu(deps: Deps, base: string, req: VoiceReques
     case "3": {
       if (!deps.desk.hasGuides) {
         deps.background(() => deps.desk.requestHuman(phone, "voice", "Called and asked for a guide", { call: false }));
-        return response(say("All guides are busy right now. A guide will reply to you by SMS soon. Goodbye."));
+        return response(say("All health guides are busy right now. A guide will reply to you by SMS soon. Goodbye."));
       }
-      return response(say("Connecting you to a Harmony guide. Please hold."), dial(deps.env.agentPhones));
+      return response(say("Connecting you to a Harmony health guide. Please hold."), dial(deps.env.agentPhones));
     }
     case "4": {
       const wallet = callerWallet(phone);

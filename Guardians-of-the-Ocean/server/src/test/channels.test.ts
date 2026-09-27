@@ -19,7 +19,7 @@ test("navPath applies back and home", () => {
 test("every reachable USSD screen fits one screen and is GSM-7", async () => {
   const built = await testApp();
   const paths = [
-    "", "1", "1*1", "1*1*1", "1*2", "2", "2*1", "2*2", "2*9", "3", "3*why do corals bleach", "4", "4*1", "4*2", "4*2*help me",
+    "", "1", "1*1", "1*1*1", "1*2", "2", "2*1", "2*2", "2*9", "3", "3*what are the signs of cholera", "4", "4*1", "4*2", "4*2*help me",
     "4*9", "5", "5*1", "5*2*1", "5*3*0", "5*4", "5*4*75", "5*4*75*1", "5*4*5", "5*9", "6", "7", "7", "9", "0",
   ];
   for (const text of paths) {
@@ -36,23 +36,23 @@ test("USSD lesson screens advance and remember progress", async () => {
   const first = await handleUssd(built.deps, { sessionId: "a", phoneNumber: STUDENT_E, text: "1" });
   const again = await handleUssd(built.deps, { sessionId: "a", phoneNumber: STUDENT_E, text: "1" });
   assert.equal(first, again, "replaying a step shows the same lesson");
-  assert.match(first, /^CON Mangroves/);
+  assert.match(first, /^CON Clear water can still carry germs/);
   const next = await handleUssd(built.deps, { sessionId: "a", phoneNumber: STUDENT_E, text: "1*1" });
-  assert.match(next, /^CON Coral reefs/);
+  assert.match(next, /^CON Wash hands with soap/);
   const student = await built.deps.store.getStudent(STUDENT_E);
   assert.equal(student?.lessonIndex, 2);
 
   const sms = await handleUssd(built.deps, { sessionId: "a", phoneNumber: STUDENT_E, text: "1*1*2" });
-  assert.match(sms, /^END Sent! "Coral reefs"/);
+  assert.match(sms, /^END Sent! "Handwashing"/);
   await built.drain();
-  assert.match(smsTo(built, STUDENT_E).at(-1)!, /Coral reefs/);
+  assert.match(smsTo(built, STUDENT_E).at(-1)!, /Handwashing/);
 });
 
 test("USSD quiz awards points for the right answer", async () => {
   const built = await testApp();
-  await handleUssd(built.deps, { sessionId: "q", phoneNumber: STUDENT_E, text: "1" }); // sees mangroves
+  await handleUssd(built.deps, { sessionId: "q", phoneNumber: STUDENT_E, text: "1" }); // sees the safe-water tip
   const q = await handleUssd(built.deps, { sessionId: "q", phoneNumber: STUDENT_E, text: "2" });
-  assert.match(q, /mangroves protect/i);
+  assert.match(q, /How long should you boil drinking water/);
   const right = await handleUssd(built.deps, { sessionId: "q", phoneNumber: STUDENT_E, text: "2*1" });
   assert.match(right, /^END Correct! \+10 points/);
   const wrong = await handleUssd(built.deps, { sessionId: "q", phoneNumber: STUDENT_E, text: "2*2" });
@@ -62,15 +62,15 @@ test("USSD quiz awards points for the right answer", async () => {
 
 test("USSD question is answered by SMS through the agent", async () => {
   const built = await testApp();
-  const reply = await handleUssd(built.deps, { sessionId: "ask", phoneNumber: STUDENT_E, text: "3*why do corals bleach" });
+  const reply = await handleUssd(built.deps, { sessionId: "ask", phoneNumber: STUDENT_E, text: "3*what are the signs of cholera" });
   assert.match(reply, /^END Thanks!/);
   await built.drain();
   const sms = smsTo(built, STUDENT_E).at(-1)!;
-  assert.match(sms, /^Harmony: Corals bleach when water stays too warm/);
-  assert.match(sms, /Src: Reef heat stress review/);
+  assert.match(sms, /^Harmony: Cholera causes sudden watery diarrhoea/);
+  assert.match(sms, /Src: Cholera response review/);
   assert.ok(!sms.includes("**") && !sms.includes("[1]") && !sms.includes("http"));
   const logged = await built.deps.store.listTickets("answered", 5);
-  assert.equal(logged[0].question, "why do corals bleach");
+  assert.equal(logged[0].question, "what are the signs of cholera");
 });
 
 test("USSD support flow sends an M-Pesa prompt and texts a receipt", async () => {
@@ -105,7 +105,7 @@ test("USSD support picks Airtel Money for Airtel lines and refuses Telkom", asyn
 test("USSD call-back request opens a ticket, alerts guides and rings the student", async () => {
   const built = await testApp();
   const reply = await handleUssd(built.deps, { sessionId: "g", phoneNumber: STUDENT_E, text: "4*1" });
-  assert.match(reply, /^END A guide will call you shortly/);
+  assert.match(reply, /^END A health guide will call you shortly/);
   await built.drain();
   const [ticket] = await built.deps.store.listTickets("handoff", 5);
   assert.equal(ticket.phone, STUDENT_E);
@@ -118,27 +118,27 @@ test("USSD daily-lesson opt-in", async () => {
   const built = await testApp();
   assert.match(await handleUssd(built.deps, { sessionId: "o", phoneNumber: STUDENT_E, text: "7" }), /^END You're in!/);
   assert.equal((await built.deps.store.getStudent(STUDENT_E))?.optedIn, true);
-  assert.match(await handleUssd(built.deps, { sessionId: "o2", phoneNumber: STUDENT_E, text: "7" }), /already get daily lessons/);
+  assert.match(await handleUssd(built.deps, { sessionId: "o2", phoneNumber: STUDENT_E, text: "7" }), /already get daily tips/);
   assert.match(await handleUssd(built.deps, { sessionId: "o3", phoneNumber: STUDENT_E, text: "6" }), /Daily SMS: on/);
 });
 
 test("SMS commands: JOIN, LESSON, QUIZ + answer, POINTS, STOP", async () => {
   const built = await testApp();
   const join = await handleSms(built.deps, STUDENT, "join Amina");
-  assert.match(join!, /^Welcome Amina!.*First lesson - Mangroves/);
+  assert.match(join!, /^Welcome Amina!.*First tip - Safe water/);
   const lesson = await handleSms(built.deps, STUDENT, "lesson");
-  assert.match(lesson!, /Coral reefs/);
+  assert.match(lesson!, /Handwashing/);
   const quiz = await handleSms(built.deps, STUDENT, "QUIZ");
-  assert.match(quiz!, /What makes coral bleach\?.*Reply A, B or C/);
-  assert.match((await handleSms(built.deps, STUDENT, "b"))!, /^Correct! \+10 points \(total 10\)/);
-  assert.match((await handleSms(built.deps, STUDENT, "points"))!, /2\/8 lessons, 10 quiz points/);
+  assert.match(quiz!, /When must you wash hands with soap\?.*Reply A, B or C/);
+  assert.match((await handleSms(built.deps, STUDENT, "a"))!, /^Correct! \+10 points \(total 10\)/);
+  assert.match((await handleSms(built.deps, STUDENT, "points"))!, /2\/8 tips, 10 quiz points/);
   assert.match((await handleSms(built.deps, STUDENT, "STOP"))!, /won't get daily/);
   assert.equal((await built.deps.store.getStudent(STUDENT_E))?.optedIn, false);
 });
 
 test("SMS free text goes to the agent, with a lessons fallback and a human offer", async () => {
   const built = await testApp();
-  assert.match((await handleSms(built.deps, STUDENT, "why do corals bleach?"))!, /^Harmony: Corals bleach/);
+  assert.match((await handleSms(built.deps, STUDENT, "what are the signs of cholera?"))!, /^Harmony: Cholera causes/);
   assert.match((await handleSms(built.deps, STUDENT, "ASK is it safe to drink river water"))!, /^Harmony: Safe water: water that looks clear/);
   assert.match((await handleSms(built.deps, STUDENT, "who won the football"))!, /Reply AGENT/);
 });
@@ -159,7 +159,7 @@ test("guides answer tickets by SMS with R <code>", async () => {
   const code = /help ([A-Z0-9]{5})/.exec(alert)![1];
   const ack = await handleSms(built.deps, "0799000111", `R ${code} Please boil it and tell your teacher, we will visit.`);
   assert.match(ack!, /^Harmony desk: sent to 0712 \*\*\*678/);
-  assert.match(smsTo(built, STUDENT_E).at(-1)!, /^Harmony guide: Please boil it/);
+  assert.match(smsTo(built, STUDENT_E).at(-1)!, /^Harmony health guide: Please boil it/);
   assert.equal((await built.deps.store.getTicket(ticket.id))?.status, "answered");
   assert.match((await handleSms(built.deps, "0799000111", "R ZZZZZ hi"))!, /no ticket ZZZZZ/);
 });
@@ -172,15 +172,15 @@ test("voice IVR: menu, lesson, spoken question answered by SMS, pay, guide bridg
   assert.match(call, /Welcome to Harmony/);
 
   const lesson = await handleVoiceMenu(built.deps, base, { callerNumber: "+254712345678", dtmfDigits: "1" });
-  assert.match(lesson, /<Say[^>]*>Today's lesson is about mangroves/);
+  assert.match(lesson, /<Say[^>]*>Today's lesson is about safe drinking water/);
 
   const rec = await handleVoiceMenu(built.deps, base, { callerNumber: "+254712345678", dtmfDigits: "2" });
   assert.match(rec, /<Record[^>]*callbackUrl="https:\/\/api\.test\/api\/at\/dev\/voice\/question"/);
 
-  const q = await handleVoiceQuestion(built.deps, base, { callerNumber: "+254712345678", transcript: "Why do corals bleach?" });
+  const q = await handleVoiceQuestion(built.deps, base, { callerNumber: "+254712345678", transcript: "What are the signs of cholera?" });
   assert.match(q, /answer will arrive by SMS/);
   await built.drain();
-  assert.match(smsTo(built, STUDENT_E).at(-1)!, /^Harmony: You asked: "Why do corals bleach\?"\. Corals bleach/);
+  assert.match(smsTo(built, STUDENT_E).at(-1)!, /^Harmony: You asked: "What are the signs of cholera\?"\. Cholera causes/);
 
   const pay = await handleVoicePay(built.deps, base, { callerNumber: "+254712345678", dtmfDigits: "150" });
   assert.match(pay, /enter your M-Pesa PIN/);
@@ -197,7 +197,7 @@ test("voice IVR: menu, lesson, spoken question answered by SMS, pay, guide bridg
 test("voice guide option falls back to SMS when no guides are configured", async () => {
   const built = await testApp({ AGENT_PHONES: "" });
   const xml = await handleVoiceMenu(built.deps, "https://x", { callerNumber: "+254712345678", dtmfDigits: "3" });
-  assert.match(xml, /All guides are busy/);
+  assert.match(xml, /All health guides are busy/);
   assert.doesNotMatch(xml, /<Dial/);
   await built.drain();
   assert.equal((await built.deps.store.listTickets("handoff", 5)).length, 1);

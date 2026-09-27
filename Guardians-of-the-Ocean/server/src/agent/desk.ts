@@ -36,8 +36,8 @@ export class Desk {
     await this.messenger.sendSms(
       phone,
       calling
-        ? `Harmony: a guide will call you shortly on this number. The call is free. Your ticket is ${code}.`
-        : `Harmony: a guide has your question and will reply by SMS soon. Your ticket is ${code}.`
+        ? `Harmony: a health guide will call you shortly on this number. The call is free. Your ticket is ${code}.`
+        : `Harmony: a health guide has your question and will reply by SMS soon. Your ticket is ${code}.`
     );
     console.log(`[desk] ticket ${code} from ${maskPhone(phone)} via ${channel} (calling=${calling})`);
     return { ticket, calling };
@@ -53,7 +53,7 @@ export class Desk {
     if (!ticket) return null;
     const text = toGsm7(message).trim();
     if (!text) return null;
-    await this.messenger.sendSms(ticket.phone, `Harmony guide: ${text}`);
+    await this.messenger.sendSms(ticket.phone, `Harmony health guide: ${text}`);
     const updated = await this.store.updateTicket(ticket.id, { answer: text, status: "answered" });
     console.log(`[desk] ${ticketCode(ticket)} answered by ${by}`);
     return updated;

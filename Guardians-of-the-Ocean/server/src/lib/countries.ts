@@ -71,7 +71,8 @@ export const COUNTRIES: Country[] = [
       { id: "telkom", name: "Telkom", mccmnc: ["63907"], prefixes: range(770, 779) },
     ],
     wallets: [
-      { id: "mpesa", label: "M-Pesa", network: "safaricom", pawapay: "MPESA_KEN", direct: "mpesa" },
+      // Kenyan M-Pesa always goes through Safaricom Daraja (STK push).
+      { id: "mpesa", label: "M-Pesa", network: "safaricom", direct: "mpesa" },
       { id: "airtel", label: "Airtel Money", network: "airtel", direct: "airtel" },
     ],
   },

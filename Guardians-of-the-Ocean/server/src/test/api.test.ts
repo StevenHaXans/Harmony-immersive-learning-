@@ -36,9 +36,9 @@ test("web: config, join, ask, pay with the simulator, ledger, card-off", async (
     const join = await api.call("POST", "/api/students/join", { phone: STUDENT, name: "Amina", school: "Likoni Primary" });
     assert.equal(join.status, 200);
     assert.equal(join.data.network, "safaricom");
-    assert.match(built.deps.messenger.outbox(STUDENT_E, 5).at(-1)!.body, /^Welcome Amina to Harmony!/);
+    assert.match(built.deps.messenger.outbox(STUDENT_E, 5).at(-1)!.body, /^Welcome Amina to Harmony Health!/);
 
-    const ask = await api.call("POST", "/api/agent/ask", { question: "Why do corals bleach?" });
+    const ask = await api.call("POST", "/api/agent/ask", { question: "What are the signs of cholera?" });
     assert.equal(ask.data.via, "aqua");
 
     const pay = await api.call("POST", "/api/pay/mobile", { phone: STUDENT, amount: 250 });
@@ -114,7 +114,7 @@ test("Africa's Talking webhooks: form-encoded USSD and SMS, token enforced", asy
     const ussd = await form("/api/at/s3cret-token-0123456789/ussd", { sessionId: "ATX1", serviceCode: "*384*2026#", phoneNumber: "+254712345678", text: "" });
     assert.equal(ussd.status, 200);
     assert.match(ussd.headers.get("content-type")!, /text\/plain/);
-    assert.match(await ussd.text(), /^CON Harmony: learn the ocean/);
+    assert.match(await ussd.text(), /^CON Harmony Health\n1\. Today's health tip/);
 
     assert.equal((await form("/api/at/wrong/ussd", { phoneNumber: "+254712345678", text: "" })).status, 404);
     assert.equal((await form("/api/at/dev/ussd", { phoneNumber: "+254712345678", text: "" })).status, 404);
@@ -122,7 +122,7 @@ test("Africa's Talking webhooks: form-encoded USSD and SMS, token enforced", asy
     const sms = await form("/api/at/s3cret-token-0123456789/sms", { from: "+254712345678", to: "22384", text: "HELP" });
     assert.equal(sms.status, 200);
     await built.drain();
-    assert.match(built.deps.messenger.outbox(STUDENT_E, 5).at(-1)!.body, /^Harmony SMS: LESSON/);
+    assert.match(built.deps.messenger.outbox(STUDENT_E, 5).at(-1)!.body, /^Harmony Health SMS: LESSON/);
 
     const voice = await form("/api/at/s3cret-token-0123456789/voice", { isActive: "1", direction: "Inbound", callerNumber: "+254712345678", sessionId: "v1" });
     assert.match(voice.headers.get("content-type")!, /xml/);
@@ -234,7 +234,7 @@ test("admin: agent console requires the token when one is set", async () => {
     assert.equal(list.data.tickets.length, 1);
     const reply = await api.call("POST", `/api/agent/tickets/${list.data.tickets[0].id}/reply`, { message: "Stay out of the water until the county says it's clear." }, auth);
     assert.equal(reply.data.ticket.status, "answered");
-    assert.match(built.deps.messenger.outbox(STUDENT_E, 10).at(-1)!.body, /^Harmony guide: Stay out/);
+    assert.match(built.deps.messenger.outbox(STUDENT_E, 10).at(-1)!.body, /^Harmony health guide: Stay out/);
 
     await api.call("POST", "/api/students/join", { phone: "0711000222" });
     const cast = await api.call("POST", "/api/admin/broadcast", {}, auth);

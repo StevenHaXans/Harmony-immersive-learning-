@@ -12,7 +12,7 @@ import { givenLabel } from "./ussd.js";
  */
 
 export function helpText(deps: Deps): string {
-  return `Harmony SMS: LESSON - next lesson. QUIZ - test yourself. ASK <question>. AGENT - talk to a person. PAY <amount> - support the coast. POINTS. STOP to quit. Or dial ${deps.env.USSD_CODE}.`;
+  return `Harmony Health SMS: LESSON - next tip. QUIZ - test yourself. ASK <question>. AGENT - talk to a health guide. PAY <amount> - support community health. POINTS. STOP to quit. Or dial ${deps.env.USSD_CODE}.`;
 }
 
 export async function handleSms(deps: Deps, rawFrom: string, rawText: string): Promise<string | null> {
@@ -53,14 +53,14 @@ export async function handleSms(deps: Deps, rawFrom: string, rawText: string): P
       const updated = await deps.store.upsertStudent(phone, { optedIn: true, name: name || null });
       const lesson = lessonAt(updated.lessonIndex);
       await deps.store.upsertStudent(phone, { lessonIndex: updated.lessonIndex + 1 });
-      return `Welcome${name ? " " + name : ""}! You'll get one short ocean lesson a day. ${lesson.sms.replace(/^Harmony lesson - /, "First lesson - ")} Reply HELP for commands.`;
+      return `Welcome${name ? " " + name : ""}! You'll get one short health tip a day. ${lesson.sms.replace(/^Harmony lesson - /, "First tip - ")} Reply HELP for commands.`;
     }
 
     case "STOP":
     case "ACHA":
     case "UNSUBSCRIBE": {
       await deps.store.upsertStudent(phone, { optedIn: false, quizPending: null });
-      return "You won't get daily Harmony lessons any more. Text JOIN to come back any time.";
+      return "You won't get daily Harmony health tips any more. Text JOIN to come back any time.";
     }
 
     case "LESSON":
@@ -82,7 +82,7 @@ export async function handleSms(deps: Deps, rawFrom: string, rawText: string): P
     case "STATUS":
     case "ALAMA": {
       const payments = await deps.store.paymentsForPhone(phone, 50);
-      return `Harmony progress: ${Math.min(student.lessonIndex, LESSONS.length)}/${LESSONS.length} lessons, ${student.points} quiz points, support given: ${givenLabel(payments)}. Daily lessons are ${student.optedIn ? "on" : "off"}.`;
+      return `Harmony progress: ${Math.min(student.lessonIndex, LESSONS.length)}/${LESSONS.length} tips, ${student.points} quiz points, support given: ${givenLabel(payments)}. Daily tips are ${student.optedIn ? "on" : "off"}.`;
     }
 
     case "AGENT":
@@ -124,7 +124,7 @@ export async function handleSms(deps: Deps, rawFrom: string, rawText: string): P
 
     case "ASK":
     case "ULIZA":
-      if (!rest) return "Send ASK and your question, e.g. ASK why do corals bleach?";
+      if (!rest) return "Send ASK and your question, e.g. ASK what are the signs of cholera?";
       return answer(deps, phone, rest);
 
     default:

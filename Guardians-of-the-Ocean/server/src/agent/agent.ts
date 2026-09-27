@@ -1,6 +1,6 @@
 import type { Env } from "../env.js";
 import { fitTo, plainText, toGsm7 } from "../lib/text.js";
-import { matchLesson } from "./lessons.js";
+import { EMERGENCY, matchLesson } from "./lessons.js";
 
 /**
  * The learning agent every channel talks to. It asks Aqua Ask (RAG over the OneAquaHealth
@@ -45,7 +45,7 @@ export function isRelevant(question: string, answer: string): boolean {
   if (!words.length) return true;
   const hay = answer.toLowerCase();
   const hits = words.filter((w) => hay.includes(w)).length;
-  return hits >= Math.min(2, words.length);
+  return hits >= Math.min(2, Math.ceil(words.length / 2));
 }
 
 export class Agent {
@@ -53,11 +53,21 @@ export class Agent {
 
   /** `cite` appends "Src: ..." to the text, for SMS where there is nowhere else to show it. */
   async answer(question: string, maxChars: number, opts: { cite?: boolean } = {}): Promise<AgentAnswer> {
-    const cite = opts.cite !== false;
     const q = question.trim().slice(0, 500);
     if (q.length < 2) {
-      return { text: "Ask me anything about the ocean, rivers or safe water. Example: ASK why do corals bleach", via: "none", source: null };
+      return { text: "Ask me about safe water, hygiene, cholera, malaria or when to see a health worker. Example: ASK signs of cholera", via: "none", source: null };
     }
+    // Possible emergencies get the safety instruction first, whatever else the answer says.
+    if (EMERGENCY.test(q)) {
+      const lead = "This may be an emergency: go to the nearest health facility now or call your local emergency number. ";
+      const rest = await this.answerInner(q, Math.max(60, maxChars - lead.length), opts);
+      return { ...rest, text: fitTo(lead + rest.text, maxChars) };
+    }
+    return this.answerInner(q, maxChars, opts);
+  }
+
+  private async answerInner(q: string, maxChars: number, opts: { cite?: boolean }): Promise<AgentAnswer> {
+    const cite = opts.cite !== false;
 
     const aqua = await this.askAqua(q);
     // Retrieval sometimes returns a confident answer to a different question; a student asking
@@ -78,7 +88,7 @@ export class Agent {
     }
 
     return {
-      text: fitTo("I don't know that one yet. Reply AGENT and a Harmony guide will get back to you.", maxChars),
+      text: fitTo("I don't know that one yet. Reply AGENT and a Harmony health guide will get back to you.", maxChars),
       via: "none",
       source: null,
     };

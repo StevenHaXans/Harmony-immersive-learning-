@@ -34,14 +34,14 @@ export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 }
 
-/** Aqua Ask stub: answers anything mentioning coral, knows nothing else. */
+/** Aqua Ask stub: answers anything mentioning cholera, returns an off-topic answer for river water, knows nothing else. */
 export const aquaRoutes = {
   "aqua.test/api/search": async (_url: string, init?: RequestInit) => {
     const { query } = JSON.parse(String(init?.body ?? "{}")) as { query: string };
-    if (/coral/i.test(query)) {
+    if (/cholera/i.test(query)) {
       return json({
-        answer: "**Corals bleach** when water stays too warm [1]. They expel the algae that feed them. See https://example.org",
-        sources: [{ publication_title: "Reef heat stress review", section: "Results", source_origin: "x" }],
+        answer: "**Cholera** causes sudden watery diarrhoea and spreads through dirty water [1]. Early rehydration saves lives. See https://example.org",
+        sources: [{ publication_title: "Cholera response review", section: "Results", source_origin: "x" }],
       });
     }
     if (/river water/i.test(query)) {

@@ -317,7 +317,7 @@
       case 'stk': {
         var p = state.prompt;
         var brand = (p.walletLabel || 'Mobile money').toUpperCase();
-        text(brand + '\nPay ' + p.amountLabel + ' to HARMONY COAST?\nEnter ' + (p.walletLabel || 'mobile money') + ' PIN:');
+        text(brand + '\nPay ' + p.amountLabel + ' to HARMONY HEALTH?\nEnter' + (p.walletLabel || 'mobile money') + ' PIN:');
         state.input = inputLine({ password: true, numeric: true, max: 4, label: 'PIN', placeholder: '****' });
         soft('OK', 'Cancel');
         break;
@@ -327,7 +327,7 @@
         soft('OK', '');
         break;
       case 'ringing':
-        el.main.innerHTML = '<div class="lcd-center" style="margin-top:22px">Incoming call</div><div class="lcd-big">HARMONY</div><div class="lcd-center">Guide call-back</div>';
+        el.main.innerHTML = '<div class="lcd-center" style="margin-top:22px">Incoming call</div><div class="lcd-big">HARMONY</div><div class="lcd-center">Health guide call-back</div>';
         soft('Answer', 'Reject');
         break;
       case 'call': {
@@ -583,10 +583,10 @@
     hush();
     said.forEach(speak);
     if (next && next.kind === 'dial') {
-      state.caption = caption + '\n\n[ringing a guide...]';
+      state.caption = caption + '\n\n[ringing a health guide...]';
       render();
       setTimeout(function () {
-        if (screen === 'call') { state.caption = 'Connected to a Harmony guide.\n(In real life you now talk to a person.)'; render(); }
+        if (screen === 'call') { state.caption = 'Connected to a Harmony health guide.\n(In real life you now talk to a person.)'; render(); }
       }, 3500);
       return;
     }

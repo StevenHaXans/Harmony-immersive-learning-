@@ -126,7 +126,7 @@ export function mobileRouter(deps: Deps): Router {
     await store.upsertStudent(phone, { lessonIndex: student.lessonIndex + 1 });
     await messenger.sendSms(
       phone,
-      `Welcome${name ? " " + name : ""} to Harmony! ${lesson.sms.replace(/^Harmony lesson - /, "Lesson 1 - ")} Text HELP to ${env.SMS_SHORTCODE} for commands or dial ${env.USSD_CODE}.`
+      `Welcome${name ? " " + name : ""} to Harmony Health! ${lesson.sms.replace(/^Harmony lesson - /, "Tip 1 - ")} Text HELP to ${env.SMS_SHORTCODE} or dial ${env.USSD_CODE}.`
     );
     res.json({
       ok: true,

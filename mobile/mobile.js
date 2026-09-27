@@ -296,12 +296,12 @@
   function renderLessons(list) {
     var wrap = $('lessons');
     wrap.innerHTML = '';
-    $('lessonCount').textContent = list.length ? list.length + ' lessons' : '';
+    $('lessonCount').textContent = list.length ? list.length + ' tips' : '';
     list.forEach(function (l, i) {
       var card = document.createElement('article');
       card.className = 'lesson';
       card.innerHTML = '<div class="num"></div><h3></h3><p></p>';
-      card.querySelector('.num').textContent = 'LESSON ' + String(i + 1).padStart(2, '0');
+      card.querySelector('.num').textContent = 'TIP ' + String(i + 1).padStart(2, '0');
       card.querySelector('h3').textContent = l.title;
       card.querySelector('p').textContent = l.summary;
       wrap.appendChild(card);
@@ -328,8 +328,8 @@
       var name = $('joinName').value.trim();
       $('joinOkTitle').textContent = name ? 'Karibu, ' + name + '!' : "You're in!";
       $('joinOkText').textContent = res.smsMode === 'mock'
-        ? 'Practice mode: your first lesson, "' + res.firstLesson + '", just arrived on the simulator phone.'
-        : 'Your first lesson, "' + res.firstLesson + '", is on its way to ' + res.phone + '.';
+        ? 'Practice mode: your first tip, "' + res.firstLesson + '", just arrived on the simulator phone.'
+        : 'Your first tip, "' + res.firstLesson + '", is on its way to ' + res.phone + '.';
       $('joinForm').classList.add('hidden');
       $('joinOk').classList.add('show');
       if (window.HarmonySim) window.HarmonySim.refresh();
@@ -382,7 +382,7 @@
       wait.textContent = res.text;
       var meta = document.createElement('div');
       meta.className = 'meta';
-      var via = { aqua: 'Research library', lessons: 'Harmony lessons', none: 'No answer yet' }[res.via] || res.via;
+      var via = { aqua: 'Research library', lessons: 'Reviewed health tip', none: 'No answer yet' }[res.via] || res.via;
       addTag(meta, via);
       if (res.source && res.via === 'aqua') addTag(meta, res.source);
       if (res.smsSent) addTag(meta, 'Sent by SMS');
@@ -392,7 +392,7 @@
         link.className = 'chip';
         link.type = 'button';
         link.style.marginTop = '10px';
-        link.textContent = 'Ask a person instead';
+        link.textContent = 'Ask a health guide instead';
         link.addEventListener('click', function () { openHuman(question); });
         wait.appendChild(link);
       }
@@ -458,7 +458,7 @@
     busy(btn, true);
     try {
       var res = await api('POST', '/api/agent/callback', { phone: intl($('humanPhone')), question: $('humanQuestion').value.trim() || undefined });
-      $('humanOkTitle').textContent = res.calling ? 'A guide will call you' : 'A guide has your question';
+      $('humanOkTitle').textContent = res.calling ? 'A health guide will call you' : 'A health guide has your question';
       $('humanOkText').textContent = (res.calling
         ? 'Keep your phone nearby. The call is free. '
         : 'They will reply by SMS shortly. ') + 'Your ticket number is ' + res.ticket + '.';
@@ -745,7 +745,7 @@
     if (p.status === 'paid') {
       stk.innerHTML =
         '<div class="result-ico ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>' +
-        '<h3 id="stkTitle">Thank you! Payment confirmed</h3><p>Your support is planting mangroves on Africa\'s coasts. A receipt is on its way by SMS.</p>' +
+        '<h3 id="stkTitle">Thank you! Payment confirmed</h3><p>Your support trains community health guides and keeps water safe. A receipt is on its way by SMS.</p>' +
         '<div class="receipt"><div><span>Amount</span><b></b></div><div><span>Method</span><b></b></div><div><span>Receipt</span><b></b></div><div><span>Phone</span><b></b></div></div>' +
         '<button class="btn block" type="button" data-close style="margin-top:14px">Done</button>';
       var r = stk.querySelectorAll('.receipt b');

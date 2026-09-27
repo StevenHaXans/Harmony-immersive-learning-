@@ -64,31 +64,31 @@ function screenOk(name, r, expectPrefix, mustInclude) {
 
 // ─────────────── USSD ───────────────
 const s1 = `ATUid_${Date.now()}_${++session}`;
-screenOk("USSD open menu", await ussd(STUDENT, "", s1), "CON ", /1\. Today's lesson[\s\S]*7\. Daily SMS lessons/);
-screenOk("USSD 1 -> today's lesson", await ussd(STUDENT, "1", s1), "CON ", /Mangroves/);
-screenOk("USSD 1*1 -> next lesson", await ussd(STUDENT, "1*1", s1), "CON ", /Coral/);
+screenOk("USSD open menu", await ussd(STUDENT, "", s1), "CON ", /1\. Today's health tip[\s\S]*7\. Daily SMS tips/);
+screenOk("USSD 1 -> today's tip", await ussd(STUDENT, "1", s1), "CON ", /Clear water can still carry germs/);
+screenOk("USSD 1*1 -> next tip", await ussd(STUDENT, "1*1", s1), "CON ", /Wash hands with soap/);
 let before = await smsCount(STUDENT);
 screenOk("USSD 1*1*2 -> SMS it to me", await ussd(STUDENT, "1*1*2", s1), "END ", /Sent!/);
-let got = await waitForSms(STUDENT, before, /Coral reefs/);
-check("   ...lesson SMS delivered", !!got, got || "no SMS");
+let got = await waitForSms(STUDENT, before, /Handwashing/);
+check("   ...tip SMS delivered", !!got, got || "no SMS");
 
 const s2 = `ATUid_${Date.now()}_${++session}`;
 screenOk("USSD 2 -> quiz question", await ussd(STUDENT, "2", s2), "CON ", /1\..*\n2\..*\n3\./);
-screenOk("USSD 2*2 -> quiz answer (correct = coral bleaching)", await ussd(STUDENT, "2*2", s2), "END ", /Correct! \+10 points/);
+screenOk("USSD 2*1 -> quiz answer (correct = boil 1 minute)", await ussd(STUDENT, "2*1", s2), "END ", /Correct! \+10 points/);
 
 const s3 = `ATUid_${Date.now()}_${++session}`;
-screenOk("USSD 3 -> ask prompt", await ussd(STUDENT, "3", s3), "CON ", /Type your question/);
+screenOk("USSD 3 -> ask prompt", await ussd(STUDENT, "3", s3), "CON ", /Type your health question/);
 before = await smsCount(STUDENT);
-screenOk("USSD 3*<question> -> answer by SMS", await ussd(STUDENT, "3*What is OneAquaHealth", s3), "END ", /on its way by SMS/);
+screenOk("USSD 3*<question> -> answer by SMS", await ussd(STUDENT, "3*What are the signs of cholera", s3), "END ", /on its way by SMS/);
 got = await waitForSms(STUDENT, before, /^Harmony: /, 40000);
-check("   ...AI answer SMS delivered (live Aqua Ask)", !!got, got || "no SMS within 40s");
+check("   ...health answer SMS delivered (Aqua Ask or reviewed tip)", !!got, got || "no SMS within 40s");
 
 const s4 = `ATUid_${Date.now()}_${++session}`;
-screenOk("USSD 4 -> guide menu", await ussd(STUDENT, "4", s4), "CON ", /Call me back/);
-screenOk("USSD 4*2 -> type question for guide", await ussd(STUDENT, "4*2", s4), "CON ", /question for the guide/);
+screenOk("USSD 4 -> health guide menu", await ussd(STUDENT, "4", s4), "CON ", /Call me back/);
+screenOk("USSD 4*2 -> type question for health guide", await ussd(STUDENT, "4*2", s4), "CON ", /question for the health guide/);
 const guideBefore = await smsCount(GUIDE);
 before = await smsCount(STUDENT);
-screenOk("USSD 4*2*<question> -> sent to guide", await ussd(STUDENT, "4*2*The river near our school is dirty", s4), "END ", /Sent to a guide/);
+screenOk("USSD 4*2*<question> -> sent to health guide", await ussd(STUDENT, "4*2*My child has had diarrhoea since yesterday", s4), "END ", /Sent to a health guide/);
 const alert = await waitForSms(GUIDE, guideBefore, /Harmony help [A-Z0-9]{5}/);
 check("   ...guide received ticket alert SMS", !!alert, alert || "none");
 got = await waitForSms(STUDENT, before, /ticket is [A-Z0-9]{5}/);
@@ -118,9 +118,9 @@ screenOk("USSD 5*4*75*0 -> back", await ussd(STUDENT, "5*4*75*0", s6), "CON ", /
 screenOk("USSD 5*4*5 -> amount too small", await ussd(STUDENT, "5*4*5", s6), "END ", /between KES 10/);
 
 const s7 = `ATUid_${Date.now()}_${++session}`;
-screenOk("USSD 5*0 -> back to main menu", await ussd(STUDENT, "5*0", s7), "CON ", /Today's lesson/);
+screenOk("USSD 5*0 -> back to main menu", await ussd(STUDENT, "5*0", s7), "CON ", /Today.s health tip/);
 screenOk("USSD 9 -> invalid choice re-shows menu", await ussd(STUDENT, "9", s7), "CON ", /Invalid choice/);
-screenOk("USSD 7 -> daily SMS opt-in", await ussd(STUDENT, "7", s7), "END ", /You're in!/);
+screenOk("USSD 7 -> daily SMS tips opt-in", await ussd(STUDENT, "7", s7), "END ", /You're in!/);
 screenOk("USSD 6 -> progress", await ussd(STUDENT, "6", s7), "END ", /Quiz points: 10[\s\S]*Support given: KES 100[\s\S]*Daily SMS: on/);
 
 const s8 = `ATUid_${Date.now()}_${++session}`;
@@ -136,21 +136,21 @@ async function smsStep(name, text, match, from = P, ms = 30000) {
   check(`SMS "${text}" -> ${name}`, r.status === 200 && !!reply, reply || `webhook ${r.status}, no reply`);
   return reply;
 }
-await smsStep("command list", "HELP", /^Harmony SMS: LESSON/);
-await smsStep("joins + first lesson", "JOIN Amina", /^Welcome Amina!.*Mangroves/);
-await smsStep("next lesson", "LESSON", /Coral reefs/);
-await smsStep("quiz question", "QUIZ", /What makes coral bleach\?.*Reply A, B or C/);
-await smsStep("quiz answer", "B", /^Correct! \+10 points/);
-await smsStep("progress", "POINTS", /2\/8 lessons, 10 quiz points/);
-await smsStep("Kiswahili lesson (SOMO)", "somo", /Plastic/);
-await smsStep("AI answer", "ASK why do corals bleach?", /^Harmony: /, P, 40000);
+await smsStep("command list", "HELP", /^Harmony Health SMS: LESSON/);
+await smsStep("joins + first tip", "JOIN Amina", /^Welcome Amina!.*Safe water/);
+await smsStep("next tip", "LESSON", /Handwashing/);
+await smsStep("quiz question", "QUIZ", /When must you wash hands with soap\?.*Reply A, B or C/);
+await smsStep("quiz answer", "A", /^Correct! \+10 points/);
+await smsStep("progress", "POINTS", /2\/8 tips, 10 quiz points/);
+await smsStep("Kiswahili tip (SOMO)", "somo", /Cholera/);
+await smsStep("AI health answer", "ASK how do I make ORS at home?", /^Harmony: /, P, 40000);
 await smsStep("free-text question", "Is it safe to drink river water?", /^Harmony: /, P, 40000);
-const ticketMsg = await smsStep("human guide ticket", "AGENT our borehole water smells bad", /ticket is [A-Z0-9]{5}/);
+const ticketMsg = await smsStep("health guide ticket", "AGENT my son has a fever since last night", /ticket is [A-Z0-9]{5}/);
 const code = ticketMsg && /ticket is ([A-Z0-9]{5})/.exec(ticketMsg)[1];
 if (code) {
   const n = await smsCount(P);
-  await inboundSms(`+254${GUIDE.slice(1)}`, `R ${code} Please boil it for 1 minute. A health officer will visit on Monday.`);
-  const relayed = await waitForSms(P, n, /^Harmony guide: Please boil it/);
+  await inboundSms(`+254${GUIDE.slice(1)}`, `R ${code} Please take him to the clinic today for a malaria test. Give plenty of fluids.`);
+  const relayed = await waitForSms(P, n, /^Harmony health guide: Please/);
   check(`SMS guide replies "R ${code} ..." -> relayed to student`, !!relayed, relayed || "none");
 }
 const payMsg = await smsStep("PAY starts M-Pesa prompt", "PAY 200", /enter your M-Pesa PIN to give KES 200/);

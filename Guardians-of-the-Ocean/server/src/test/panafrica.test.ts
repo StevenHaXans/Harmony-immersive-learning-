@@ -166,7 +166,7 @@ test("web: country catalogue, Zambian Airtel payment, ledger per currency, pawaP
     assert.deepEqual(zm.wallets.map((w: { id: string }) => w.id), ["mtn", "airtel", "zamtel"]);
     assert.ok(zm.wallets.every((w: { rail: string; available: boolean }) => w.rail === "pawapay" && w.available));
     const ke = cfg.countries.find((c: { code: string }) => c.code === "KE");
-    assert.equal(ke.wallets.find((w: { id: string }) => w.id === "mpesa").rail, "pawapay", "Kenyan M-Pesa falls back to pawaPay without Daraja");
+    assert.equal(ke.wallets.find((w: { id: string }) => w.id === "mpesa").rail, "mpesa", "Kenyan M-Pesa always goes through Daraja");
 
     const pay = await post("/api/pay/mobile", { phone: ZM_AIRTEL, amount: 50, wallet: "airtel" });
     assert.equal(pay.status, 201);

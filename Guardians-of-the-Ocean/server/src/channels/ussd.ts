@@ -29,7 +29,7 @@ export function givenLabel(payments: MobilePayment[]): string {
 }
 
 const ROOT =
-  "Harmony: learn the ocean\n1. Today's lesson\n2. Quiz\n3. Ask a question\n4. Talk to a guide\n5. Support the coast\n6. My progress\n7. Daily SMS lessons";
+  "Harmony Health\n1. Today's health tip\n2. Quiz\n3. Ask a health question\n4. Talk to a health guide\n5. Support community health\n6. My progress\n7. Daily SMS tips";
 
 function con(body: string): string {
   return "CON " + clip(body);
@@ -111,7 +111,7 @@ export async function handleUssd(deps: Deps, req: UssdRequest): Promise<string> 
     }
 
     case "3": {
-      if (!a) return con("Type your question.\nThe answer comes by SMS.");
+      if (!a) return con("Type your health question.\nThe answer comes by SMS.");
       const question = path.slice(1).join(" ");
       deps.background(async () => {
         const answer = await deps.agent.answer(question, SMS_MAX - 12);
@@ -122,18 +122,18 @@ export async function handleUssd(deps: Deps, req: UssdRequest): Promise<string> 
     }
 
     case "4": {
-      if (!a) return con("Talk to a guide\n1. Call me back (free)\n2. Ask by SMS\n0. Back");
+      if (!a) return con("Talk to a health guide\n1. Call me back (free)\n2. Ask by SMS\n0. Back");
       if (a === "1") {
         deps.background(() => deps.desk.requestHuman(phone, "ussd", "Asked for a call back", { call: true }));
-        return end("A guide will call you shortly. Your ticket number is coming by SMS.");
+        return end("A health guide will call you shortly. Your ticket number is coming by SMS.");
       }
       if (a === "2") {
-        if (!b) return con("Type your question for the guide:");
+        if (!b) return con("Type your question for the health guide:");
         const question = path.slice(2).join(" ");
         deps.background(() => deps.desk.requestHuman(phone, "ussd", question, { call: false }));
-        return end("Sent to a guide. They will reply by SMS.");
+        return end("Sent to a health guide. They will reply by SMS.");
       }
-      return con("Invalid choice.\nTalk to a guide\n1. Call me back (free)\n2. Ask by SMS\n0. Back");
+      return con("Invalid choice.\nTalk to a health guide\n1. Call me back (free)\n2. Ask by SMS\n0. Back");
     }
 
     case "5": {
@@ -156,7 +156,7 @@ export async function handleUssd(deps: Deps, req: UssdRequest): Promise<string> 
       const [pick, typed, confirm] = rest;
       const cur = country.currency;
       const presets = country.amounts.slice(0, 3);
-      const pickMenu = `Support coast restoration\n${presets.map((v, i) => `${i + 1}. ${money(v, cur)}`).join("\n")}\n4. Other amount\n0. Back`;
+      const pickMenu = `Support community health\n${presets.map((v, i) => `${i + 1}. ${money(v, cur)}`).join("\n")}\n4. Other amount\n0. Back`;
       if (!pick) return con(pickMenu);
 
       let amount: number;
@@ -194,19 +194,19 @@ export async function handleUssd(deps: Deps, req: UssdRequest): Promise<string> 
     case "6": {
       const payments = await deps.store.paymentsForPhone(phone, 50);
       return end(
-        `Your Harmony progress\nLessons: ${Math.min(student.lessonIndex, LESSONS.length)} of ${LESSONS.length}\nQuiz points: ${student.points}\nSupport given: ${givenLabel(payments)}\nDaily SMS: ${student.optedIn ? "on" : "off"}`
+        `Your Harmony progress\nTips: ${Math.min(student.lessonIndex, LESSONS.length)} of ${LESSONS.length}\nQuiz points: ${student.points}\nSupport given: ${givenLabel(payments)}\nDaily SMS: ${student.optedIn ? "on" : "off"}`
       );
     }
 
     case "7": {
       if (student.optedIn) {
-        return end(`You already get daily lessons. Text STOP to ${deps.env.SMS_SHORTCODE} to pause them.`);
+        return end(`You already get daily tips. Text STOP to ${deps.env.SMS_SHORTCODE} to pause them.`);
       }
       await deps.store.upsertStudent(phone, { optedIn: true });
       deps.background(() =>
-        deps.messenger.sendSms(phone, `Welcome to Harmony! One short ocean lesson a day by SMS. Text LESSON any time, ASK <question>, or STOP to quit. Free to receive.`)
+        deps.messenger.sendSms(phone, `Welcome to Harmony Health! One short health tip a day by SMS. Text LESSON any time, ASK <question>, AGENT for a health guide, or STOP to quit. General info, not a diagnosis.`)
       );
-      return end(`You're in! One short lesson a day by SMS. Text STOP to ${deps.env.SMS_SHORTCODE} to quit.`);
+      return end(`You're in! One short health tip a day by SMS. Text STOP to ${deps.env.SMS_SHORTCODE} to quit.`);
     }
 
     default:
