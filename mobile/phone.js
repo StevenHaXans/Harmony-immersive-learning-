@@ -317,7 +317,7 @@
       case 'stk': {
         var p = state.prompt;
         var brand = (p.walletLabel || 'Mobile money').toUpperCase();
-        text(brand + '\nPay ' + p.amountLabel + ' to HARMONY HEALTH?\nEnter' + (p.walletLabel || 'mobile money') + ' PIN:');
+        text(brand + '\nPay ' + p.amountLabel + ' to HARMONY HEALTH?\nEnter ' + (p.walletLabel || 'mobile money') + ' PIN:');
         state.input = inputLine({ password: true, numeric: true, max: 4, label: 'PIN', placeholder: '****' });
         soft('OK', 'Cancel');
         break;
