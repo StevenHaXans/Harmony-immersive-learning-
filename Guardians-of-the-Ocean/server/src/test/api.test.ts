@@ -36,7 +36,7 @@ test("web: config, join, ask, pay with the simulator, ledger, card-off", async (
     const join = await api.call("POST", "/api/students/join", { phone: STUDENT, name: "Amina", school: "Likoni Primary" });
     assert.equal(join.status, 200);
     assert.equal(join.data.network, "safaricom");
-    assert.match(built.deps.messenger.outbox(STUDENT_E, 5).at(-1)!.body, /^Karibu Amina to Harmony!/);
+    assert.match(built.deps.messenger.outbox(STUDENT_E, 5).at(-1)!.body, /^Welcome Amina to Harmony!/);
 
     const ask = await api.call("POST", "/api/agent/ask", { question: "Why do corals bleach?" });
     assert.equal(ask.data.via, "aqua");
@@ -58,8 +58,9 @@ test("web: config, join, ask, pay with the simulator, ledger, card-off", async (
     assert.match(status.data.payment.receipt, /^T[A-Z0-9]{9}$/);
 
     const ledger = await api.call("GET", "/api/ledger");
-    assert.equal(ledger.data.mobile.paid.amount, 250);
-    assert.equal(ledger.data.mobile.mpesa.paidCount, 1);
+    assert.equal(ledger.data.mobile.gifts, 1);
+    assert.deepEqual(ledger.data.mobile.byCurrency, [{ currency: "KES", amount: 250, count: 1, label: "KES 250" }]);
+    assert.deepEqual(ledger.data.mobile.countries, ["KE"]);
     assert.equal(ledger.data.live, false);
 
     assert.equal((await api.call("POST", "/api/checkout", { email: "a@b.co" })).status, 503);

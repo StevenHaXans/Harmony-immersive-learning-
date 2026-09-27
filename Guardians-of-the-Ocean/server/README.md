@@ -3,8 +3,8 @@
 Node/Express + Prisma/PostgreSQL service behind Immersive Learning. It handles:
 
 - **Card payments** through Stripe Checkout (the original service). Fulfillment still happens only in the webhook handler, never from the success URL.
-- **Mobile money** through M-Pesa Express (Safaricom Daraja STK push) and Airtel Money (Airtel Africa collection / USSD push).
-- **Students on any phone**: two-way SMS, a USSD menu and a voice IVR through Africa's Talking.
+- **Mobile money across Africa**: **pawaPay** carries 20 countries through one API (M-Pesa, MTN MoMo, Airtel, Orange, Vodacom, Moov, Free, Yas/Tigo, Halotel, TNM, Zamtel...). In Kenya, M-Pesa Express (Daraja) and Airtel Money can also run direct.
+- **Students on any phone, in any supported country**: two-way SMS, a USSD menu and a voice IVR through Africa's Talking. Numbers, currencies and wallets are per country (`src/lib/countries.ts`).
 - **The learning agent**: one brain for every channel. It asks Aqua Ask (RAG over the research library), falls back to built-in lessons, and hands off to a **human guide** by SMS relay or a free call-back.
 
 The student web app is `/mobile/` at the repo root. The guide desk is `/mobile/agent.html`.
@@ -37,8 +37,9 @@ localStorage.setItem('goo-api', 'http://127.0.0.1:8790');
 Tests:
 
 ```bash
-npm test
+npm test                 # unit + API tests
 npm run typecheck
+npm run check:webhooks   # against a running server: Africa's Talking-style USSD/SMS in several countries
 ```
 
 ## Environment
@@ -58,6 +59,22 @@ See `.env.example` for the full list. The main groups:
 | `AIRTEL_*` | Airtel Africa collection app. |
 | `AQUA_ASK_URL`, `GOOGLE_API_KEY`, `AGENT_PHONES` | The agent, voice transcription, and the human guides. |
 
+## Providers and why
+
+| Need | Primary | Fallback / alternative |
+| --- | --- | --- |
+| SMS, USSD, voice | Click Mobile, once its API and keys are issued (no public docs or sandbox yet) | **Africa's Talking**: self-serve, sandbox, multi-country. What the code uses today. |
+| Mobile money | Click Mobile mobile money, if it supports STK / USSD push | **pawaPay** in 20 countries. Kenya can also use Daraja and Airtel direct. |
+| Cards | Stripe | none |
+
+Routing per payment: the wallet's direct rail if it's configured, then pawaPay, then practice mode (only while `DEV_TOOLS` is on).
+
+## Countries
+
+Benin, Burkina Faso, Cameroon, Congo, Côte d'Ivoire, DR Congo, Ethiopia, Gabon, Ghana, Kenya, Lesotho, Malawi, Mozambique, Nigeria, Rwanda, Senegal, Sierra Leone, Tanzania, Uganda, Zambia. That's pawaPay's deposit coverage, plus Kenyan Airtel direct. Wallets that need an OTP or a browser redirect (Orange Burkina, Wave) are left out because a feature phone can't complete them.
+
+When a number's network can't be told from its prefix (or the USSD gateway's `networkCode`), the student is asked which wallet to use: a USSD menu, `PAY 1000 MOOV` by SMS, or a button on the web.
+
 ## Connect the gateways
 
 Replace `API` with your public API origin and `TOKEN` with `CALLBACK_TOKEN`.
@@ -75,6 +92,13 @@ Replace `API` with your public API origin and `TOKEN` with `CALLBACK_TOKEN`.
 1. Create a Daraja app with M-Pesa Express, then set `MPESA_CONSUMER_KEY` and `MPESA_CONSUMER_SECRET`.
 2. Sandbox: use the test shortcode and passkey from the Daraja portal. Production: use your paybill or till and the passkey Safaricom issues when you go live, and set `MPESA_ENV=production`.
 3. The STK callback URL is sent with every request (`API/api/pay/mpesa/callback/TOKEN`), so there is nothing to configure on the portal. Daraja does not sign callbacks. The secret path, the idempotent settle and a status query fallback cover that.
+
+### pawaPay (pan-African mobile money)
+
+1. Sign up for the sandbox at `dashboard.sandbox.pawapay.io`, create an API token, then set `PAWAPAY_API_TOKEN`.
+2. In the dashboard, set the deposit callback URL to `API/api/pay/pawapay/callback/TOKEN`.
+3. Callbacks are not trusted on their own: each one is confirmed with pawaPay's Check Deposit Status before a payment is marked paid.
+4. For live money, complete pawaPay's onboarding, then set `PAWAPAY_ENV=production` with the production token.
 
 ### Airtel Money (Airtel Africa Open API)
 
@@ -94,13 +118,13 @@ Unchanged. Run `stripe listen --forward-to localhost:8787/api/webhooks/stripe` l
 - `POST /api/students/join`: opts a student in and sends the first lesson by SMS.
 - `POST /api/agent/ask`: asks the agent. Can also text the answer.
 - `POST /api/agent/callback`: opens a guide ticket, alerts guides, and rings the student.
-- `POST /api/pay/mobile` `{ phone, amount, provider? }`: sends the M-Pesa or Airtel PIN prompt. The provider is picked from the number when omitted.
+- `POST /api/pay/mobile` `{ phone, amount, wallet? }`: sends the PIN prompt. `phone` can be from any supported country (`+256…`). `wallet` is `mpesa`, `mtn`, `airtel`, `orange`… and is picked from the number when omitted.
 - `GET /api/pay/mobile/:id`: status. It asks the provider directly if the callback is late.
 - `GET /api/mobile/ledger`, `GET /api/ledger`: totals. `/api/ledger` also carries the Stripe figures.
 
 **Provider callbacks** (all behind `CALLBACK_TOKEN`)
 
-- `POST /api/pay/mpesa/callback/:token`, `POST /api/pay/airtel/callback/:token`
+- `POST /api/pay/mpesa/callback/:token`, `POST /api/pay/airtel/callback/:token`, `POST /api/pay/pawapay/callback/:token`
 - `POST /api/at/:token/ussd | sms | delivery | voice | voice/menu | voice/question | voice/pay`
 
 **Guide desk** (`Authorization: Bearer ADMIN_TOKEN`)

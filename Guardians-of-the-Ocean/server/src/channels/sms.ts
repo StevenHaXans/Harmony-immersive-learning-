@@ -1,7 +1,10 @@
 import { LESSONS, LETTERS, lessonAt, quizText } from "../agent/lessons.js";
 import type { Deps } from "../deps.js";
-import { normalizeKePhone } from "../lib/phone.js";
-import { SMS_MAX, kes } from "../lib/text.js";
+import { money, walletFromWord } from "../lib/countries.js";
+import { countryOf, normalizePhone } from "../lib/phone.js";
+import { SMS_MAX } from "../lib/text.js";
+import { walletLabel } from "../payments/service.js";
+import { givenLabel } from "./ussd.js";
 
 /**
  * Two-way SMS on the shortcode. The first word is the command (English or Kiswahili);
@@ -13,7 +16,7 @@ export function helpText(deps: Deps): string {
 }
 
 export async function handleSms(deps: Deps, rawFrom: string, rawText: string): Promise<string | null> {
-  const phone = normalizeKePhone(rawFrom);
+  const phone = normalizePhone(rawFrom);
   if (!phone) return null;
   const text = String(rawText ?? "").trim();
   await deps.store.logMessage({ direction: "in", channel: "sms", phone, body: text.slice(0, 500), status: "received", providerId: null });
@@ -50,7 +53,7 @@ export async function handleSms(deps: Deps, rawFrom: string, rawText: string): P
       const updated = await deps.store.upsertStudent(phone, { optedIn: true, name: name || null });
       const lesson = lessonAt(updated.lessonIndex);
       await deps.store.upsertStudent(phone, { lessonIndex: updated.lessonIndex + 1 });
-      return `Karibu${name ? " " + name : ""}! You'll get one short ocean lesson a day. ${lesson.sms.replace(/^Harmony lesson - /, "First lesson - ")} Reply HELP for commands.`;
+      return `Welcome${name ? " " + name : ""}! You'll get one short ocean lesson a day. ${lesson.sms.replace(/^Harmony lesson - /, "First lesson - ")} Reply HELP for commands.`;
     }
 
     case "STOP":
@@ -79,8 +82,7 @@ export async function handleSms(deps: Deps, rawFrom: string, rawText: string): P
     case "STATUS":
     case "ALAMA": {
       const payments = await deps.store.paymentsForPhone(phone, 50);
-      const given = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0);
-      return `Harmony progress: ${Math.min(student.lessonIndex, LESSONS.length)}/${LESSONS.length} lessons, ${student.points} quiz points, ${kes(given)} support given. Daily lessons are ${student.optedIn ? "on" : "off"}.`;
+      return `Harmony progress: ${Math.min(student.lessonIndex, LESSONS.length)}/${LESSONS.length} lessons, ${student.points} quiz points, support given: ${givenLabel(payments)}. Daily lessons are ${student.optedIn ? "on" : "off"}.`;
     }
 
     case "AGENT":
@@ -95,13 +97,24 @@ export async function handleSms(deps: Deps, rawFrom: string, rawText: string): P
     case "PAY":
     case "CHANGIA":
     case "SUPPORT": {
-      const amount = Number(rest.replace(/[^\d]/g, ""));
-      if (!amount) return `Send PAY and an amount, e.g. PAY 100. Min ${kes(deps.env.MOBILE_MIN_KES)}.`;
+      // "PAY 5000" or "PAY 5000 MTN": the wallet word is only needed where the network is unclear.
+      const country = countryOf(phone)!;
+      const words = rest.split(/\s+/).filter(Boolean);
+      const amount = Number((words.find((w) => /^\d[\d,]*$/.test(w)) ?? "").replace(/,/g, ""));
+      const walletWord = words.find((w) => !/^\d/.test(w));
+      const wallet = walletWord ? walletFromWord(country, walletWord) : null;
+      const example = `PAY ${country.amounts[1]}${country.wallets.length > 1 ? ` ${country.wallets[0].id.toUpperCase()}` : ""}`;
+      if (!amount) return `Send PAY and an amount, e.g. ${example}. Min ${money(country.min, country.currency)}.`;
+      if (walletWord && !wallet) return `Harmony: pick ${country.wallets.map((w) => w.id.toUpperCase()).join(" or ")}, e.g. ${example}.`;
       try {
-        const { payment } = await deps.payments.start({ phone, amount, channel: "sms" });
-        return `Harmony: check your phone and enter your ${payment.provider === "mpesa" ? "M-Pesa" : "Airtel Money"} PIN to give ${kes(payment.amount)}.`;
+        const { payment } = await deps.payments.start({ phone, amount, wallet: wallet?.id, channel: "sms" });
+        return `Harmony: check your phone and enter your ${walletLabel(payment.country, payment.wallet)} PIN to give ${money(payment.amount, payment.currency)}.`;
       } catch (err) {
-        return `Harmony: ${(err as Error).message}`;
+        const msg = (err as Error).message;
+        if (msg.startsWith("Choose your mobile money")) {
+          return `Harmony: which wallet? Reply ${country.wallets.map((w) => `PAY ${amount} ${w.id.toUpperCase()}`).join(" or ")}.`;
+        }
+        return `Harmony: ${msg}`;
       }
     }
 

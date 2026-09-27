@@ -5,8 +5,11 @@ export interface PushRequest {
   paymentId: string;
   /** 2547XXXXXXXX */
   phone: string;
-  /** Whole shillings. */
+  /** Whole units of `currency`. */
   amount: number;
+  currency: string;
+  /** Wallet provider code on the rail, e.g. pawaPay "MTN_MOMO_UGA". Direct rails ignore it. */
+  walletCode?: string;
   reference: string;
   description: string;
 }

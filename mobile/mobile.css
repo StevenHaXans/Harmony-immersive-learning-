@@ -210,6 +210,18 @@ svg{flex:none}
   background:var(--surface-2);border:1px solid var(--line);
 }
 .net-badge.show{display:inline-flex}
+/* Country picker inside phone fields: a visible flag + dial code over a transparent native select. */
+.input-wrap.has-cc .input{padding-left:104px}
+.cc{position:absolute;left:6px;top:50%;transform:translateY(-50%);height:40px;width:92px;border-radius:10px;
+  background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;gap:4px;
+  font-weight:700;font-size:14px;cursor:pointer;z-index:1}
+.cc:focus-within{box-shadow:var(--ring)}
+.cc-face{pointer-events:none;white-space:nowrap}
+.cc-face::after{content:"";display:inline-block;width:0;height:0;margin-left:6px;vertical-align:middle;
+  border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--muted)}
+.cc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px}
+.net-badge.mtn i{background:#ffcb05}.net-badge.orange i{background:#ff7900}.net-badge.vodacom i{background:#e60000}
+.net-badge.moov i{background:#0066b3}.net-badge.free i{background:#d7141a}.net-badge.telecel i{background:#e60000}
 .net-badge i{width:8px;height:8px;border-radius:50%}
 .net-badge.safaricom i{background:var(--mpesa)}
 .net-badge.airtel i{background:var(--airtel)}
@@ -333,10 +345,8 @@ svg{flex:none}
 .method b{font-size:14px;letter-spacing:.1px}
 .method small{font-size:11.5px;color:var(--muted);font-weight:500}
 .method .logo{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font:800 11px/1 var(--body);color:#fff;letter-spacing:-.3px}
-.method[data-method="mpesa"] .logo{background:var(--mpesa)}
-.method[data-method="airtel"] .logo{background:var(--airtel)}
-.method[data-method="card"] .logo{background:var(--card)}
 .method[aria-checked="true"]{background:var(--surface-2)}
+.method[aria-checked="true"]{border-color:var(--teal);box-shadow:0 0 0 4px rgba(62,224,207,.15)}
 .method[data-method="mpesa"][aria-checked="true"]{border-color:var(--mpesa);box-shadow:0 0 0 4px rgba(47,185,100,.15)}
 .method[data-method="airtel"][aria-checked="true"]{border-color:var(--airtel);box-shadow:0 0 0 4px rgba(238,58,63,.15)}
 .method[data-method="card"][aria-checked="true"]{border-color:var(--card);box-shadow:0 0 0 4px rgba(139,131,255,.15)}

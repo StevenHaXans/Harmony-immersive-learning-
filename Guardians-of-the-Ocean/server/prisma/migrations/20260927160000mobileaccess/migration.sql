@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "MobileProvider" AS ENUM ('mpesa', 'airtel');
+CREATE TYPE "MobileProvider" AS ENUM ('mpesa', 'airtel', 'pawapay');
 
 -- CreateEnum
 CREATE TYPE "MobilePaymentStatus" AS ENUM ('pending', 'paid', 'failed', 'cancelled', 'timeout');
@@ -28,6 +28,8 @@ CREATE TABLE "mobile_payments" (
     "id" TEXT NOT NULL,
     "provider" "MobileProvider" NOT NULL,
     "phone" TEXT NOT NULL,
+    "country" TEXT NOT NULL DEFAULT 'KE',
+    "wallet" TEXT NOT NULL DEFAULT 'mpesa',
     "amount" INTEGER NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'KES',
     "status" "MobilePaymentStatus" NOT NULL DEFAULT 'pending',
@@ -82,6 +84,9 @@ CREATE INDEX "mobile_payments_phone_idx" ON "mobile_payments"("phone");
 
 -- CreateIndex
 CREATE INDEX "mobile_payments_status_idx" ON "mobile_payments"("status");
+
+-- CreateIndex
+CREATE INDEX "mobile_payments_country_idx" ON "mobile_payments"("country");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "mobile_payments_provider_provider_ref_key" ON "mobile_payments"("provider", "provider_ref");

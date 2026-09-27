@@ -54,6 +54,14 @@ const envSchema = z.object({
   MPESA_PARTY_B: text,
   MPESA_ACCOUNT_REF: z.string().optional().default("HARMONY"),
 
+  // pawaPay: pan-African mobile money (20 countries) through one API. The fallback rail for
+  // every wallet without a direct integration, and for Kenyan M-Pesa when Daraja is not set.
+  PAWAPAY_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  PAWAPAY_API_TOKEN: text,
+
+  // Country used for numbers typed without a country code (ISO 3166 alpha-2).
+  DEFAULT_COUNTRY: z.string().optional().default("KE"),
+
   // Airtel Africa Open API (Airtel Money collection / USSD push).
   AIRTEL_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
   AIRTEL_CLIENT_ID: text,
@@ -67,10 +75,8 @@ const envSchema = z.object({
   GOOGLE_CHAT_MODEL: z.string().optional().default("gemini-2.5-flash-lite"),
   AGENT_PHONES: text,
 
-  MOBILE_MIN_KES: z.coerce.number().int().min(1).default(10),
-  MOBILE_MAX_KES: z.coerce.number().int().min(1).default(150000),
-  // Community goal shown on the support meter.
-  MOBILE_GOAL_KES: z.coerce.number().int().min(1).default(100000),
+  // Community goal on the support meter, counted in gifts because gifts arrive in many currencies.
+  MOBILE_GOAL_GIFTS: z.coerce.number().int().min(1).default(500),
   // Mock payments confirm themselves after this many ms (0 = wait for the simulator).
   MOCK_CONFIRM_MS: z.coerce.number().int().min(0).default(8000),
 });
@@ -90,6 +96,7 @@ export type Env = RawEnv & {
   voiceMode: Mode;
   mpesaMode: Mode;
   airtelMode: Mode;
+  pawapayMode: Mode;
 };
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
@@ -110,11 +117,12 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const mpesaMode: Mode = !mpesaReady ? "mock" : e.MPESA_ENV === "production" ? "live" : "sandbox";
   const airtelReady = !!(e.AIRTEL_CLIENT_ID && e.AIRTEL_CLIENT_SECRET);
   const airtelMode: Mode = !airtelReady ? "mock" : e.AIRTEL_ENV === "production" ? "live" : "sandbox";
+  const pawapayMode: Mode = !e.PAWAPAY_API_TOKEN ? "mock" : e.PAWAPAY_ENV === "production" ? "live" : "sandbox";
 
   // The simulator can play any phone number. That is harmless while every channel is a mock,
   // but with real gateways it would let anyone send SMS and PIN prompts to strangers, so a
   // production server only keeps it while nothing real is connected.
-  const allMock = [smsMode, voiceMode, mpesaMode, airtelMode].every((m) => m === "mock");
+  const allMock = [smsMode, voiceMode, mpesaMode, airtelMode, pawapayMode].every((m) => m === "mock");
   const wanted = e.DEV_TOOLS == null || e.DEV_TOOLS.trim() === "" ? !production : isOn(e.DEV_TOOLS);
   const devTools = wanted && (!production || allMock);
 
@@ -130,6 +138,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     voiceMode,
     mpesaMode,
     airtelMode,
+    pawapayMode,
   };
 }
 

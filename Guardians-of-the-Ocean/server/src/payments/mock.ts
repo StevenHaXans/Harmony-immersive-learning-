@@ -15,6 +15,7 @@ interface MockPrompt {
   paymentId: string;
   phone: string;
   amount: number;
+  currency: string;
   outcome: Outcome;
   timer: NodeJS.Timeout | null;
 }
@@ -32,7 +33,9 @@ export class MockMoney implements MobileMoney {
 
   async push(req: PushRequest): Promise<PushResult> {
     const ref = `MOCK-${req.paymentId}`;
-    const prompt: MockPrompt = { ref, paymentId: req.paymentId, phone: req.phone, amount: req.amount, outcome: { status: "pending" }, timer: null };
+    const prompt: MockPrompt = {
+      ref, paymentId: req.paymentId, phone: req.phone, amount: req.amount, currency: req.currency, outcome: { status: "pending" }, timer: null,
+    };
     if (this.confirmMs > 0) {
       prompt.timer = setTimeout(() => this.settle(ref, { status: "paid", receipt: receiptCode(this.name) }), this.confirmMs);
       prompt.timer.unref?.();
@@ -40,7 +43,7 @@ export class MockMoney implements MobileMoney {
     this.prompts.set(ref, prompt);
     return {
       providerRef: ref,
-      message: `Practice mode: a pretend ${this.name === "mpesa" ? "M-Pesa" : "Airtel Money"} prompt was sent. No real money moves.`,
+      message: "Practice mode: a pretend PIN prompt was sent. No real money moves.",
     };
   }
 
@@ -49,11 +52,11 @@ export class MockMoney implements MobileMoney {
   }
 
   /** Open prompts for a handset, newest first. Used by the simulator to render the PIN sheet. */
-  openPrompts(phone: string): Array<{ ref: string; paymentId: string; amount: number }> {
+  openPrompts(phone: string): Array<{ ref: string; paymentId: string; amount: number; currency: string }> {
     return [...this.prompts.values()]
       .filter((p) => p.phone === phone && p.outcome.status === "pending")
       .reverse()
-      .map(({ ref, paymentId, amount }) => ({ ref, paymentId, amount }));
+      .map(({ ref, paymentId, amount, currency }) => ({ ref, paymentId, amount, currency }));
   }
 
   /** Simulator: the student typed a PIN (any 4 digits pass except 0000) or pressed cancel. */

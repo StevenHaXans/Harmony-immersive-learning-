@@ -12,7 +12,7 @@ async function main(): Promise<void> {
   const server = built.app.listen(env.PORT, () => {
     console.log(
       `Harmony API listening on :${env.PORT} (store=${built.deps.store.kind}, stripe=${env.stripeEnabled ? "on" : "off"}, ` +
-        `sms=${env.smsMode}, voice=${env.voiceMode}, mpesa=${env.mpesaMode}, airtel=${env.airtelMode}, simulator=${env.devTools ? "on" : "off"})`
+        `sms=${env.smsMode}, voice=${env.voiceMode}, mpesa=${env.mpesaMode}, airtel=${env.airtelMode}, pawapay=${env.pawapayMode}, simulator=${env.devTools ? "on" : "off"})`
     );
     if (!env.production) {
       console.log(`  Africa's Talking USSD callback: ${env.publicApiUrl}/api/at/${env.CALLBACK_TOKEN || "dev"}/ussd`);

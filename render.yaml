@@ -138,6 +138,13 @@ services:
         sync: false
       - key: MPESA_TYPE
         value: paybill
+      - key: PAWAPAY_ENV
+        # Pan-African mobile money (20 countries). Set to production when going live.
+        value: sandbox
+      - key: PAWAPAY_API_TOKEN
+        sync: false
+      - key: DEFAULT_COUNTRY
+        value: KE
       - key: AIRTEL_ENV
         value: sandbox
       - key: AIRTEL_CLIENT_ID

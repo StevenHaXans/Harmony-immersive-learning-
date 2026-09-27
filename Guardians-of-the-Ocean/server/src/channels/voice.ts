@@ -2,9 +2,18 @@ import { lessonAt } from "../agent/lessons.js";
 import { transcribe } from "../agent/transcribe.js";
 import { dial, getDigits, record, response, say } from "../comms/voicexml.js";
 import type { Deps } from "../deps.js";
-import { normalizeKePhone } from "../lib/phone.js";
-import { SMS_MAX, fitTo, kes } from "../lib/text.js";
-import { PROVIDER_LABEL, providerForPhone } from "../payments/service.js";
+import { spokenCurrency, Wallet } from "../lib/countries.js";
+import { countryOf, networkOf, normalizePhone } from "../lib/phone.js";
+import { SMS_MAX, fitTo } from "../lib/text.js";
+
+/** The wallet a caller can pay with, if it can be told without asking (keypad menus stay short). */
+function callerWallet(phone: string): Wallet | null {
+  const c = countryOf(phone);
+  if (!c) return null;
+  const network = networkOf(phone);
+  if (network !== "unknown") return c.wallets.find((w) => w.network === network) ?? null;
+  return c.wallets.length === 1 ? c.wallets[0] : null;
+}
 
 /**
  * Voice IVR over Africa's Talking. Students call our number (or get a free callback) and use
@@ -29,7 +38,7 @@ const MENU =
 
 function studentPhone(req: VoiceRequest): string {
   const raw = String(req.direction ?? "").toLowerCase() === "outbound" ? req.destinationNumber : req.callerNumber;
-  return normalizeKePhone(raw);
+  return normalizePhone(raw);
 }
 
 function menu(base: string, intro = ""): string {
@@ -39,7 +48,7 @@ function menu(base: string, intro = ""): string {
 export async function handleVoiceCall(deps: Deps, base: string, req: VoiceRequest): Promise<string> {
   if (req.isActive === "0") return ""; // end-of-call notification
   const phone = studentPhone(req);
-  if (!phone) return response(say("Sorry, Harmony only supports Kenyan mobile numbers. Goodbye."));
+  if (!phone) return response(say("Sorry, Harmony does not support numbers from this country yet. Goodbye."));
 
   if (String(req.clientRequestId ?? "").startsWith("agent:")) {
     if (!deps.desk.hasGuides) {
@@ -82,10 +91,11 @@ export async function handleVoiceMenu(deps: Deps, base: string, req: VoiceReques
       return response(say("Connecting you to a Harmony guide. Please hold."), dial(deps.env.agentPhones));
     }
     case "4": {
-      const provider = providerForPhone(phone);
-      if (!provider) return menu(base, "Mobile money support needs a Safaricom or Airtel line. ");
+      const wallet = callerWallet(phone);
+      if (!wallet) return menu(base, "To give with mobile money from this line, please dial the Harmony USSD code. ");
+      const c = countryOf(phone)!;
       return response(
-        getDigits(`Enter the amount in shillings, then press the hash key.`, { callbackUrl: `${base}/voice/pay`, finishOnKey: "#" })
+        getDigits(`Enter the amount in ${spokenCurrency(c.currency)}, then press the hash key.`, { callbackUrl: `${base}/voice/pay`, finishOnKey: "#" })
       );
     }
     default:
@@ -118,23 +128,22 @@ export async function handleVoicePay(deps: Deps, base: string, req: VoiceRequest
   const phone = studentPhone(req);
   if (!phone) return response(say("Goodbye."));
   const amount = Number(String(req.dtmfDigits ?? "").replace(/\D/g, ""));
-  const provider = providerForPhone(phone);
-  if (!provider) return menu(base);
-  if (!Number.isInteger(amount) || amount < deps.env.MOBILE_MIN_KES || amount > deps.env.MOBILE_MAX_KES) {
+  const wallet = callerWallet(phone);
+  const c = countryOf(phone);
+  if (!wallet || !c) return menu(base);
+  const unit = spokenCurrency(c.currency);
+  if (!Number.isInteger(amount) || amount < c.min || amount > c.max) {
     return response(
-      getDigits(
-        `Please enter an amount between ${deps.env.MOBILE_MIN_KES} and ${deps.env.MOBILE_MAX_KES} shillings, then press hash.`,
-        { callbackUrl: `${base}/voice/pay`, finishOnKey: "#" }
-      )
+      getDigits(`Please enter an amount between ${c.min} and ${c.max} ${unit}, then press hash.`, { callbackUrl: `${base}/voice/pay`, finishOnKey: "#" })
     );
   }
-  const label = PROVIDER_LABEL[provider];
+  const label = wallet.label;
   deps.background(async () => {
     try {
-      await deps.payments.start({ phone, amount, provider, channel: "voice" });
+      await deps.payments.start({ phone, amount, wallet: wallet.id, channel: "voice" });
     } catch (err) {
       await deps.messenger.sendSms(phone, `Harmony: ${(err as Error).message}`);
     }
   });
-  return response(say(`Thank you. After this call, enter your ${label} PIN on the prompt to give ${kes(amount).replace("KES", "")} shillings. Goodbye.`));
+  return response(say(`Thank you. After this call, enter your ${label} PIN on the prompt to give ${amount} ${unit}. Goodbye.`));
 }

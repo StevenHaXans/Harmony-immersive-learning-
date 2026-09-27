@@ -1,6 +1,6 @@
 import type { Env } from "../env.js";
 import type { Messenger } from "../comms/africastalking.js";
-import { maskPhone, normalizeKePhone, prettyPhone } from "../lib/phone.js";
+import { maskPhone, normalizePhone, prettyPhone } from "../lib/phone.js";
 import { fitTo, toGsm7 } from "../lib/text.js";
 import type { AgentTicket, Channel, Store } from "../store/types.js";
 
@@ -67,8 +67,8 @@ export class Desk {
   }
 
   isGuide(phone: string): boolean {
-    const n = normalizeKePhone(phone);
-    return !!n && this.env.agentPhones.some((g) => normalizeKePhone(g) === n);
+    const n = normalizePhone(phone);
+    return !!n && this.env.agentPhones.some((g) => normalizePhone(g) === n);
   }
 
   /** "R AB12C The answer..." sent by a guide from their own phone. */

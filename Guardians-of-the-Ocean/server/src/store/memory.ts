@@ -22,8 +22,10 @@ export class MemoryStore implements Store {
       id: id("pay"),
       provider: data.provider,
       phone: data.phone,
+      country: data.country,
+      wallet: data.wallet,
       amount: data.amount,
-      currency: data.currency ?? "KES",
+      currency: data.currency,
       status: "pending",
       purpose: data.purpose,
       channel: data.channel,
@@ -79,20 +81,20 @@ export class MemoryStore implements Store {
   }
 
   async paymentTotals(): Promise<PaymentTotals> {
-    const totals: PaymentTotals = {
-      paidKes: 0, paidCount: 0, pendingCount: 0,
-      byProvider: { mpesa: { paidKes: 0, paidCount: 0 }, airtel: { paidKes: 0, paidCount: 0 } },
-    };
+    const totals: PaymentTotals = { paidCount: 0, pendingCount: 0, countries: [], byCurrency: {} };
+    const countries = new Set<string>();
     for (const p of this.payments.values()) {
       if (p.status === "paid") {
-        totals.paidKes += p.amount;
         totals.paidCount += 1;
-        totals.byProvider[p.provider].paidKes += p.amount;
-        totals.byProvider[p.provider].paidCount += 1;
+        countries.add(p.country);
+        const bucket = (totals.byCurrency[p.currency] ??= { amount: 0, count: 0 });
+        bucket.amount += p.amount;
+        bucket.count += 1;
       } else if (p.status === "pending") {
         totals.pendingCount += 1;
       }
     }
+    totals.countries = [...countries].sort();
     return totals;
   }
 

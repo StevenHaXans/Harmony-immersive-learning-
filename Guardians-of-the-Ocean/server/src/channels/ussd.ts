@@ -1,9 +1,9 @@
 import { LESSONS, lessonAt, quizText } from "../agent/lessons.js";
 import type { Deps } from "../deps.js";
-import { normalizeKePhone } from "../lib/phone.js";
-import { SMS_MAX, USSD_MAX, kes, toGsm7 } from "../lib/text.js";
-import { PROVIDER_LABEL, providerForPhone } from "../payments/service.js";
-import type { Student } from "../store/types.js";
+import { money } from "../lib/countries.js";
+import { countryOf, networkOf, normalizePhone } from "../lib/phone.js";
+import { SMS_MAX, USSD_MAX, toGsm7 } from "../lib/text.js";
+import type { MobilePayment, Student } from "../store/types.js";
 
 /**
  * USSD menu (Africa's Talking format: reply "CON ..." to continue, "END ..." to close).
@@ -16,9 +16,17 @@ export interface UssdRequest {
   sessionId: string;
   phoneNumber: string;
   text: string;
+  /** MCC+MNC of the caller's network, sent by the gateway. */
+  networkCode?: string;
 }
 
-const AMOUNTS = [50, 100, 250];
+/** "KES 100 + UGX 5,000": gifts in different currencies are listed, never added up. */
+export function givenLabel(payments: MobilePayment[]): string {
+  const sums = new Map<string, number>();
+  for (const p of payments) if (p.status === "paid") sums.set(p.currency, (sums.get(p.currency) ?? 0) + p.amount);
+  if (!sums.size) return "none yet";
+  return [...sums].map(([cur, amt]) => money(amt, cur)).join(" + ");
+}
 
 const ROOT =
   "Harmony: learn the ocean\n1. Today's lesson\n2. Quiz\n3. Ask a question\n4. Talk to a guide\n5. Support the coast\n6. My progress\n7. Daily SMS lessons";
@@ -62,8 +70,8 @@ function lessonBase(sessionId: string, student: Student): number {
 }
 
 export async function handleUssd(deps: Deps, req: UssdRequest): Promise<string> {
-  const phone = normalizeKePhone(req.phoneNumber);
-  if (!phone) return end("Sorry, Harmony works with Kenyan mobile numbers.");
+  const phone = normalizePhone(req.phoneNumber);
+  if (!phone) return end("Sorry, Harmony doesn't support numbers from this country yet.");
   const student = await deps.store.upsertStudent(phone);
   const path = navPath(req.text);
   const [menu, a, b, c] = path;
@@ -129,47 +137,64 @@ export async function handleUssd(deps: Deps, req: UssdRequest): Promise<string> 
     }
 
     case "5": {
-      const provider = providerForPhone(phone);
-      if (!provider) return end("Mobile money support works on Safaricom (M-Pesa) and Airtel lines.");
-      const label = PROVIDER_LABEL[provider];
-      const pickMenu = `Support coast restoration\n${AMOUNTS.map((v, i) => `${i + 1}. ${kes(v)}`).join("\n")}\n4. Other amount\n0. Back`;
-      if (!a) return con(pickMenu);
+      const country = countryOf(phone)!;
+      const wallets = country.wallets;
+      if (!wallets.length) return end(`Mobile money support isn't available in ${country.name} yet.`);
+      const network = networkOf(phone, req.networkCode);
+      let wallet = network !== "unknown" ? wallets.find((w) => w.network === network) ?? null : wallets.length === 1 ? wallets[0] : null;
+      if (network !== "unknown" && !wallet) return end(`Mobile money support works with ${wallets.map((w) => w.label).join(" or ")}.`);
+
+      let rest = path.slice(1);
+      if (!wallet) {
+        // The network can't be told from this number: let the student pick their wallet first.
+        const walletMenu = `Pay with:\n${wallets.map((w, i) => `${i + 1}. ${w.label}`).join("\n")}\n0. Back`;
+        if (!rest[0]) return con(walletMenu);
+        wallet = wallets[Number(rest[0]) - 1] ?? null;
+        if (!wallet) return con("Invalid choice.\n" + walletMenu);
+        rest = rest.slice(1);
+      }
+      const [pick, typed, confirm] = rest;
+      const cur = country.currency;
+      const presets = country.amounts.slice(0, 3);
+      const pickMenu = `Support coast restoration\n${presets.map((v, i) => `${i + 1}. ${money(v, cur)}`).join("\n")}\n4. Other amount\n0. Back`;
+      if (!pick) return con(pickMenu);
 
       let amount: number;
       let confirmAt: string | undefined;
-      if (a === "4") {
-        if (!b) return con(`Enter amount in KES (${deps.env.MOBILE_MIN_KES} - ${deps.env.MOBILE_MAX_KES}):`);
-        amount = Number(b);
-        confirmAt = c;
-        if (!Number.isInteger(amount) || amount < deps.env.MOBILE_MIN_KES || amount > deps.env.MOBILE_MAX_KES) {
-          return end(`Amount must be between ${kes(deps.env.MOBILE_MIN_KES)} and ${kes(deps.env.MOBILE_MAX_KES)}. Please dial again.`);
+      if (pick === "4") {
+        if (!typed) return con(`Enter amount in ${cur} (${country.min} - ${country.max}):`);
+        amount = Number(typed);
+        confirmAt = confirm;
+        if (!Number.isInteger(amount) || amount < country.min || amount > country.max) {
+          return end(`Amount must be between ${money(country.min, cur)} and ${money(country.max, cur)}. Please dial again.`);
         }
       } else {
-        const idx = Number(a) - 1;
-        if (!AMOUNTS[idx]) return con("Invalid choice.\n" + pickMenu);
-        amount = AMOUNTS[idx];
-        confirmAt = b;
+        const idx = Number(pick) - 1;
+        if (!presets[idx]) return con("Invalid choice.\n" + pickMenu);
+        amount = presets[idx];
+        confirmAt = typed;
       }
 
-      if (!confirmAt) return con(`Pay ${kes(amount)} with ${label} from this line?\n1. Confirm\n0. Back`);
+      const label = wallet.label;
+      if (!confirmAt) return con(`Pay ${money(amount, cur)} with ${label} from this line?\n1. Confirm\n0. Back`);
       if (confirmAt !== "1") return end("Cancelled. Nothing was charged.");
-      if (!deps.payments.available(provider)) return end(`${label} is not available yet. Please try later.`);
+      if (!deps.payments.available(country.code, wallet.id)) return end(`${label} is not available yet. Please try later.`);
 
+      const chosen = wallet.id;
       deps.background(async () => {
         try {
-          await deps.payments.start({ phone, amount, provider, channel: "ussd" });
+          await deps.payments.start({ phone, amount, wallet: chosen, mccmnc: req.networkCode, channel: "ussd" });
         } catch (err) {
           await deps.messenger.sendSms(phone, `Harmony: ${(err as Error).message}`);
         }
       });
-      return end(`You'll get a ${label} PIN prompt in a few seconds for ${kes(amount)}. Asante!`);
+      return end(`You'll get a ${label} PIN prompt in a few seconds for ${money(amount, cur)}. Thank you!`);
     }
 
     case "6": {
       const payments = await deps.store.paymentsForPhone(phone, 50);
-      const given = payments.filter((p) => p.status === "paid").reduce((s, p) => s + p.amount, 0);
       return end(
-        `Your Harmony progress\nLessons: ${Math.min(student.lessonIndex, LESSONS.length)} of ${LESSONS.length}\nQuiz points: ${student.points}\nSupport given: ${kes(given)}\nDaily SMS: ${student.optedIn ? "on" : "off"}`
+        `Your Harmony progress\nLessons: ${Math.min(student.lessonIndex, LESSONS.length)} of ${LESSONS.length}\nQuiz points: ${student.points}\nSupport given: ${givenLabel(payments)}\nDaily SMS: ${student.optedIn ? "on" : "off"}`
       );
     }
 
@@ -179,7 +204,7 @@ export async function handleUssd(deps: Deps, req: UssdRequest): Promise<string> 
       }
       await deps.store.upsertStudent(phone, { optedIn: true });
       deps.background(() =>
-        deps.messenger.sendSms(phone, `Karibu Harmony! One short ocean lesson a day by SMS. Text LESSON any time, ASK <question>, or STOP to quit. Free to receive.`)
+        deps.messenger.sendSms(phone, `Welcome to Harmony! One short ocean lesson a day by SMS. Text LESSON any time, ASK <question>, or STOP to quit. Free to receive.`)
       );
       return end(`You're in! One short lesson a day by SMS. Text STOP to ${deps.env.SMS_SHORTCODE} to quit.`);
     }

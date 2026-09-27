@@ -7,7 +7,9 @@ import { handleUssd } from "../channels/ussd.js";
 import { handleVoiceCall, handleVoiceMenu, handleVoicePay, handleVoiceQuestion, VoiceRequest } from "../channels/voice.js";
 import type { Deps } from "../deps.js";
 import { HttpError } from "../http.js";
-import { maskPhone, networkOf, normalizeKePhone, prettyPhone } from "../lib/phone.js";
+import { COUNTRIES, money } from "../lib/countries.js";
+import { countryOf, getDefaultCountry, maskPhone, networkOf, normalizePhone, prettyPhone } from "../lib/phone.js";
+import { walletLabel } from "../payments/service.js";
 import { RateLimiter } from "../lib/rate.js";
 import { kes } from "../lib/text.js";
 import type { AgentTicket, Provider, TicketStatus } from "../store/types.js";
@@ -40,8 +42,8 @@ export function mobileRouter(deps: Deps): Router {
   }
 
   function requirePhone(raw: unknown): string {
-    const phone = normalizeKePhone(raw);
-    if (!phone) throw new HttpError(400, "Enter a valid Kenyan mobile number, e.g. 0712 345 678");
+    const phone = normalizePhone(raw);
+    if (!phone) throw new HttpError(400, "Enter a valid mobile number, with the country code if it is not local (e.g. +256 772 123 456)");
     return phone;
   }
 
@@ -66,11 +68,29 @@ export function mobileRouter(deps: Deps): Router {
         voice: messenger.voiceMode,
         mpesa: payments.providers.mpesa.mode,
         airtel: payments.providers.airtel.mode,
+        pawapay: payments.providers.pawapay.mode,
         stripe: env.stripeEnabled,
       },
-      available: { mpesa: payments.available("mpesa"), airtel: payments.available("airtel"), card: env.stripeEnabled },
-      amounts: { kes: [50, 100, 250, 500, 1000], usd: [5, 10, 25, 50, 100], min: env.MOBILE_MIN_KES, max: env.MOBILE_MAX_KES },
-      goalKes: env.MOBILE_GOAL_KES,
+      available: { card: env.stripeEnabled },
+      defaultCountry: getDefaultCountry().code,
+      // Every supported country with its currency, networks (for number hints) and wallets.
+      countries: payments.catalogue().map(({ country, wallets }) => ({
+        code: country.code,
+        name: country.name,
+        flag: country.flag,
+        dial: country.dial,
+        nsn: country.nsn,
+        trunk0: country.trunk0,
+        mobileStarts: country.mobileStarts ?? null,
+        currency: country.currency,
+        amounts: country.amounts,
+        min: country.min,
+        max: country.max,
+        networks: country.networks.map((n) => ({ id: n.id, name: n.name, prefixes: n.prefixes })),
+        wallets: wallets.map((w) => ({ id: w.id, label: w.label, network: w.network, available: w.available, rail: w.rail })),
+      })),
+      amounts: { usd: [5, 10, 25, 50, 100] },
+      goalGifts: env.MOBILE_GOAL_GIFTS,
       lessons: LESSONS.map((l) => ({ id: l.id, title: l.title, summary: l.ussd })),
       guides: desk.hasGuides,
       simulator: env.devTools,
@@ -79,9 +99,11 @@ export function mobileRouter(deps: Deps): Router {
   });
 
   r.get("/api/mobile/phone-info", (req, res) => {
-    const phone = normalizeKePhone(req.query.phone);
+    const phone = normalizePhone(req.query.phone);
     const network = phone ? networkOf(phone) : "unknown";
-    res.json({ valid: !!phone, network, provider: network === "safaricom" ? "mpesa" : network === "airtel" ? "airtel" : null });
+    const country = phone ? countryOf(phone) : null;
+    const wallet = country?.wallets.find((w) => w.network === network) ?? null;
+    res.json({ valid: !!phone, country: country?.code ?? null, network, wallet: wallet?.id ?? null });
   });
 
   // ── Students ──
@@ -104,11 +126,12 @@ export function mobileRouter(deps: Deps): Router {
     await store.upsertStudent(phone, { lessonIndex: student.lessonIndex + 1 });
     await messenger.sendSms(
       phone,
-      `Karibu${name ? " " + name : ""} to Harmony! ${lesson.sms.replace(/^Harmony lesson - /, "Lesson 1 - ")} Text HELP to ${env.SMS_SHORTCODE} for commands or dial ${env.USSD_CODE}.`
+      `Welcome${name ? " " + name : ""} to Harmony! ${lesson.sms.replace(/^Harmony lesson - /, "Lesson 1 - ")} Text HELP to ${env.SMS_SHORTCODE} for commands or dial ${env.USSD_CODE}.`
     );
     res.json({
       ok: true,
       phone: prettyPhone(phone),
+      country: countryOf(phone)?.code ?? null,
       network: networkOf(phone),
       smsMode: messenger.smsMode,
       firstLesson: lesson.title,
@@ -154,6 +177,8 @@ export function mobileRouter(deps: Deps): Router {
   const payBody = z.object({
     phone: phoneSchema,
     amount: z.coerce.number(),
+    wallet: z.string().max(20).optional(),
+    // Older clients sent the Kenyan wallet as `provider`.
     provider: z.enum(["mpesa", "airtel"]).optional(),
     purpose: z.string().max(40).optional(),
   });
@@ -163,7 +188,13 @@ export function mobileRouter(deps: Deps): Router {
     if (!body.success) throw new HttpError(400, "Enter a phone number and amount");
     const phone = requirePhone(body.data.phone);
     guard(req, phone);
-    const { payment, message } = await payments.start({ ...body.data, phone, channel: "web" });
+    const { payment, message } = await payments.start({
+      phone,
+      amount: body.data.amount,
+      wallet: body.data.wallet ?? body.data.provider,
+      purpose: body.data.purpose,
+      channel: "web",
+    });
     res.status(201).json({ payment: payments.view(payment, message) });
   }));
 
@@ -177,6 +208,12 @@ export function mobileRouter(deps: Deps): Router {
     if (env.CALLBACK_TOKEN) return token === env.CALLBACK_TOKEN;
     return !env.production && token === "dev";
   }
+
+  r.post("/api/pay/pawapay/callback/:token", wrap(async (req, res) => {
+    if (!callbackAllowed(String(req.params.token))) throw new HttpError(404, "Not found");
+    const handled = await payments.handlePawapayCallback(req.body);
+    res.json({ ok: true, handled });
+  }));
 
   r.post("/api/pay/mpesa/callback/:token", wrap(async (req, res) => {
     if (!callbackAllowed(String(req.params.token))) throw new HttpError(404, "Not found");
@@ -208,6 +245,7 @@ export function mobileRouter(deps: Deps): Router {
       sessionId: String(req.body.sessionId ?? ""),
       phoneNumber: String(req.body.phoneNumber ?? ""),
       text: String(req.body.text ?? ""),
+      networkCode: req.body.networkCode ? String(req.body.networkCode) : undefined,
     });
     res.type("text/plain").send(reply);
   }));
@@ -350,13 +388,17 @@ export function mobileRouter(deps: Deps): Router {
     dev.get("/phone/:phone", wrap(async (req, res) => {
       const phone = requirePhone(req.params.phone);
       const outbox = messenger.outbox(phone, 60);
-      const prompts = (["mpesa", "airtel"] as Provider[]).flatMap((p) =>
-        (deps.mocks[p]?.openPrompts(phone) ?? []).map((x) => ({ ...x, provider: p, amountLabel: kes(x.amount) }))
+      const open = (["mpesa", "airtel", "pawapay"] as Provider[]).flatMap((p) => (deps.mocks[p]?.openPrompts(phone) ?? []).map((x) => ({ ...x, provider: p })));
+      const prompts = await Promise.all(
+        open.map(async (x) => {
+          const payment = await store.getPayment(x.paymentId);
+          return { ...x, amountLabel: money(x.amount, x.currency), walletLabel: payment ? walletLabel(payment.country, payment.wallet) : "Mobile money" };
+        })
       );
-      res.json({ outbox, prompts, network: networkOf(phone) });
+      res.json({ outbox, prompts, network: networkOf(phone), country: countryOf(phone)?.code ?? null });
     }));
 
-    const promptBody = z.object({ provider: z.enum(["mpesa", "airtel"]), action: z.enum(["pin", "cancel"]), pin: z.string().max(8).optional() });
+    const promptBody = z.object({ provider: z.enum(["mpesa", "airtel", "pawapay"]), action: z.enum(["pin", "cancel"]), pin: z.string().max(8).optional() });
 
     dev.post("/prompts/:ref", wrap(async (req, res) => {
       const body = promptBody.safeParse(req.body);
@@ -380,12 +422,14 @@ export function mobileRouter(deps: Deps): Router {
 
 export async function mobileLedger(deps: Deps) {
   const totals = await deps.store.paymentTotals();
+  const byCurrency = Object.entries(totals.byCurrency)
+    .sort((a, b) => b[1].count - a[1].count)
+    .map(([currency, v]) => ({ currency, amount: v.amount, count: v.count, label: money(v.amount, currency) }));
   return {
-    currency: "KES",
-    paid: { amount: totals.paidKes, count: totals.paidCount, label: kes(totals.paidKes) },
+    gifts: totals.paidCount,
     pending: totals.pendingCount,
-    mpesa: { ...totals.byProvider.mpesa, label: kes(totals.byProvider.mpesa.paidKes) },
-    airtel: { ...totals.byProvider.airtel, label: kes(totals.byProvider.airtel.paidKes) },
+    countries: totals.countries,
+    byCurrency,
     students: await deps.store.studentCount(),
   };
 }

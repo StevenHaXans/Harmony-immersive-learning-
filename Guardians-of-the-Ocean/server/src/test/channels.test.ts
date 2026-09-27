@@ -97,7 +97,7 @@ test("USSD support flow sends an M-Pesa prompt and texts a receipt", async () =>
 test("USSD support picks Airtel Money for Airtel lines and refuses Telkom", async () => {
   const built = await testApp();
   assert.match(await handleUssd(built.deps, { sessionId: "p2", phoneNumber: AIRTEL_E, text: "5*1" }), /with Airtel Money/);
-  assert.match(await handleUssd(built.deps, { sessionId: "p3", phoneNumber: TELKOM_STUDENT, text: "5" }), /^END Mobile money support works on Safaricom/);
+  assert.match(await handleUssd(built.deps, { sessionId: "p3", phoneNumber: TELKOM_STUDENT, text: "5" }), /^END Mobile money support works with M-Pesa or Airtel Money/);
   const tooSmall = await handleUssd(built.deps, { sessionId: "p4", phoneNumber: STUDENT_E, text: "5*4*5" });
   assert.match(tooSmall, /^END Amount must be between KES 10/);
 });
@@ -125,7 +125,7 @@ test("USSD daily-lesson opt-in", async () => {
 test("SMS commands: JOIN, LESSON, QUIZ + answer, POINTS, STOP", async () => {
   const built = await testApp();
   const join = await handleSms(built.deps, STUDENT, "join Amina");
-  assert.match(join!, /^Karibu Amina!.*First lesson - Mangroves/);
+  assert.match(join!, /^Welcome Amina!.*First lesson - Mangroves/);
   const lesson = await handleSms(built.deps, STUDENT, "lesson");
   assert.match(lesson!, /Coral reefs/);
   const quiz = await handleSms(built.deps, STUDENT, "QUIZ");

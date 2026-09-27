@@ -79,9 +79,11 @@ model StripeEvent {
 
 // ── Mobile access: students on SMS / USSD / voice, mobile money, the agent ──
 
+// The rail that carried the payment: Daraja (mpesa), Airtel direct (airtel) or pawaPay.
 enum MobileProvider {
   mpesa
   airtel
+  pawapay
 }
 
 enum MobilePaymentStatus {
@@ -120,13 +122,17 @@ model MobilePayment {
   id            String              @id @default(cuid())
   provider      MobileProvider
   phone         String
-  // Whole shillings.
+  // ISO 3166 alpha-2, e.g. KE, UG, GH.
+  country       String              @default("KE")
+  // Wallet the customer paid with: mpesa, mtn, airtel, orange... (see src/lib/countries.ts).
+  wallet        String              @default("mpesa")
+  // Whole units of the local currency.
   amount        Int
   currency      String              @default("KES")
   status        MobilePaymentStatus @default(pending)
   purpose       String              @default("restoration")
   channel       String              @default("web")
-  // Daraja CheckoutRequestID / Airtel transaction id.
+  // Daraja CheckoutRequestID / Airtel transaction id / pawaPay depositId.
   providerRef   String?             @map("provider_ref")
   merchantRef   String?             @map("merchant_ref")
   receipt       String?
@@ -137,6 +143,7 @@ model MobilePayment {
   @@unique([provider, providerRef])
   @@index([phone])
   @@index([status])
+  @@index([country])
   @@map("mobile_payments")
 }
 

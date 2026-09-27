@@ -7,9 +7,14 @@
   var App = window.HarmonyApp;
   var $ = function (id) { return document.getElementById(id); };
   var mount = $('phoneMount');
+  // Demo lines across Africa (international format so they work whatever the home country is).
   var LINES = [
-    { id: 'saf', label: 'Safaricom', number: '0712345678' },
-    { id: 'air', label: 'Airtel', number: '0733123456' }
+    { id: 'ke-saf', label: '🇰🇪 Safaricom', number: '+254712345678' },
+    { id: 'ke-air', label: '🇰🇪 Airtel', number: '+254733123456' },
+    { id: 'ug-mtn', label: '🇺🇬 MTN', number: '+256772123456' },
+    { id: 'gh-mtn', label: '🇬🇭 MTN', number: '+233241234567' },
+    { id: 'ci-orange', label: '🇨🇮 Orange', number: '+2250701234567' },
+    { id: 'bj', label: '🇧🇯 Benin', number: '+2290197123456' }
   ];
   var LINE_KEY = 'harmony-sim-line';
 
@@ -28,13 +33,12 @@
   var el = {};
 
   function api(method, path, body) { return App.api(method, path, body); }
-  function pretty(n) {
-    var d = App.normalize(n);
-    if (!d) return n;
-    var l = '0' + d.slice(3);
-    return l.slice(0, 4) + ' ' + l.slice(4, 7) + ' ' + l.slice(7);
+  function pretty(n) { return App.pretty('+' + App.normalize(n)); }
+  function network() {
+    var l = App.lookup('+' + line);
+    if (!l) return 'No network';
+    return (l.network ? l.network.name : l.country.name) + ' ' + l.country.code;
   }
-  function network() { return App.networkOf(line) === 'airtel' ? 'Airtel KE' : 'Safaricom'; }
   function sessionKey(k) { return 'harmony-sim:' + App.normalize(line) + ':' + k; }
   function loadSet(k) { try { return JSON.parse(sessionStorage.getItem(sessionKey(k)) || '{}'); } catch (e) { return {}; } }
   function saveSet(k, v) { try { sessionStorage.setItem(sessionKey(k), JSON.stringify(v)); } catch (e) {} }
@@ -168,7 +172,8 @@
       b.type = 'button';
       b.className = 'sim-line';
       b.setAttribute('aria-pressed', App.normalize(l.number) === App.normalize(line) ? 'true' : 'false');
-      b.textContent = l.label + ' · ' + pretty(l.number);
+      b.textContent = l.label;
+      b.title = pretty(l.number);
       b.addEventListener('click', function () { setLine(l.number); });
       wrap.appendChild(b);
     });
@@ -179,7 +184,7 @@
     custom.setAttribute('aria-pressed', isCustom ? 'true' : 'false');
     custom.textContent = isCustom ? 'Other · ' + pretty(line) : 'Other number';
     custom.addEventListener('click', function () {
-      var n = window.prompt('Kenyan number to simulate (e.g. 0722 000 111):', '');
+      var n = window.prompt('Number to simulate, with country code (e.g. +256 772 000 111):', '');
       if (n && App.normalize(n)) setLine(n);
     });
     wrap.appendChild(custom);
@@ -193,6 +198,7 @@
     inbox = [];
     prompts = [];
     hangup(true);
+    if (el.net) el.net.textContent = network();
     go('home');
     renderLines();
     document.dispatchEvent(new CustomEvent('harmony:simline', { detail: { phone: line, pretty: pretty(line) } }));
@@ -310,8 +316,8 @@
         break;
       case 'stk': {
         var p = state.prompt;
-        var brand = p.provider === 'mpesa' ? 'M-PESA' : 'Airtel Money';
-        text(brand + '\nPay ' + p.amountLabel + ' to HARMONY COAST?\nEnter ' + (p.provider === 'mpesa' ? 'M-PESA' : 'Airtel Money') + ' PIN:');
+        var brand = (p.walletLabel || 'Mobile money').toUpperCase();
+        text(brand + '\nPay ' + p.amountLabel + ' to HARMONY COAST?\nEnter ' + (p.walletLabel || 'mobile money') + ' PIN:');
         state.input = inputLine({ password: true, numeric: true, max: 4, label: 'PIN', placeholder: '****' });
         soft('OK', 'Cancel');
         break;

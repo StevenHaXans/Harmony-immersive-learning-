@@ -11,6 +11,8 @@ import type { Deps } from "./deps.js";
 import { Airtel } from "./payments/airtel.js";
 import { MockMoney } from "./payments/mock.js";
 import { Mpesa } from "./payments/mpesa.js";
+import { PawaPay } from "./payments/pawapay.js";
+import { setDefaultCountry } from "./lib/phone.js";
 import { Payments } from "./payments/service.js";
 import type { MobileMoney } from "./payments/types.js";
 import { mobileLedger, mobileRouter } from "./routes/mobile.js";
@@ -34,6 +36,7 @@ export interface BuiltApp {
 }
 
 export async function buildApp(env: Env, overrides: AppOverrides = {}): Promise<BuiltApp> {
+  setDefaultCountry(env.DEFAULT_COUNTRY);
   const fetchImpl = overrides.fetchImpl ?? fetch;
   const store = overrides.store ?? (await createStore(env));
   const messenger = overrides.messenger ?? new AfricasTalking(env, store, fetchImpl);
@@ -42,18 +45,18 @@ export async function buildApp(env: Env, overrides: AppOverrides = {}): Promise<
   function rail(name: Provider): MobileMoney {
     const given = overrides.providers?.[name];
     if (given) return given;
-    const mode = name === "mpesa" ? env.mpesaMode : env.airtelMode;
+    const mode = name === "mpesa" ? env.mpesaMode : name === "airtel" ? env.airtelMode : env.pawapayMode;
     if (mode === "mock") {
       const mock = new MockMoney(name, env.MOCK_CONFIRM_MS);
       mocks[name] = mock;
       return mock;
     }
     const token = env.CALLBACK_TOKEN || "dev";
-    return name === "mpesa"
-      ? new Mpesa(env, `${env.publicApiUrl}/api/pay/mpesa/callback/${token}`, fetchImpl)
-      : new Airtel(env, fetchImpl);
+    if (name === "mpesa") return new Mpesa(env, `${env.publicApiUrl}/api/pay/mpesa/callback/${token}`, fetchImpl);
+    if (name === "airtel") return new Airtel(env, fetchImpl);
+    return new PawaPay(env, fetchImpl);
   }
-  const providers = { mpesa: rail("mpesa"), airtel: rail("airtel") };
+  const providers = { mpesa: rail("mpesa"), airtel: rail("airtel"), pawapay: rail("pawapay") };
   const payments = new Payments(env, store, messenger, providers);
   for (const mock of Object.values(mocks)) {
     mock!.onSettled = (provider, ref, outcome) => {
@@ -108,7 +111,8 @@ export async function buildApp(env: Env, overrides: AppOverrides = {}): Promise<
       voice: messenger.voiceMode,
       mpesa: providers.mpesa.mode,
       airtel: providers.airtel.mode,
-      mockPayments: mockAllowed(env) && (providers.mpesa.mode === "mock" || providers.airtel.mode === "mock"),
+      pawapay: providers.pawapay.mode,
+      mockPayments: mockAllowed(env) && Object.values(providers).some((p) => p.mode === "mock"),
     });
   });
 

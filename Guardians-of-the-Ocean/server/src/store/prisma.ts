@@ -10,9 +10,7 @@ export class PrismaStore implements Store {
   constructor(private db: PrismaClient) {}
 
   async createPayment(data: NewPayment): Promise<MobilePayment> {
-    return (await this.db.mobilePayment.create({
-      data: { ...data, currency: data.currency ?? "KES" },
-    })) as MobilePayment;
+    return (await this.db.mobilePayment.create({ data })) as MobilePayment;
   }
 
   async updatePayment(id: string, patch: PaymentPatch): Promise<MobilePayment | null> {
@@ -57,23 +55,14 @@ export class PrismaStore implements Store {
   }
 
   async paymentTotals(): Promise<PaymentTotals> {
-    const [grouped, pendingCount] = await Promise.all([
-      this.db.mobilePayment.groupBy({
-        by: ["provider"],
-        where: { status: "paid" },
-        _sum: { amount: true },
-        _count: true,
-      }),
+    const [byCurrency, byCountry, pendingCount] = await Promise.all([
+      this.db.mobilePayment.groupBy({ by: ["currency"], where: { status: "paid" }, _sum: { amount: true }, _count: true }),
+      this.db.mobilePayment.groupBy({ by: ["country"], where: { status: "paid" } }),
       this.db.mobilePayment.count({ where: { status: "pending" } }),
     ]);
-    const totals: PaymentTotals = {
-      paidKes: 0, paidCount: 0, pendingCount,
-      byProvider: { mpesa: { paidKes: 0, paidCount: 0 }, airtel: { paidKes: 0, paidCount: 0 } },
-    };
-    for (const row of grouped) {
-      const kes = row._sum.amount ?? 0;
-      totals.byProvider[row.provider as Provider] = { paidKes: kes, paidCount: row._count };
-      totals.paidKes += kes;
+    const totals: PaymentTotals = { paidCount: 0, pendingCount, countries: byCountry.map((r) => r.country).sort(), byCurrency: {} };
+    for (const row of byCurrency) {
+      totals.byCurrency[row.currency] = { amount: row._sum.amount ?? 0, count: row._count };
       totals.paidCount += row._count;
     }
     return totals;

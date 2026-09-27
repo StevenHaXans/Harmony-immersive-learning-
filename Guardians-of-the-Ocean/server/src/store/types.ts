@@ -1,4 +1,5 @@
-export type Provider = "mpesa" | "airtel";
+/** The rail that carried a payment. */
+export type Provider = "mpesa" | "airtel" | "pawapay";
 export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled" | "timeout";
 export type TicketStatus = "open" | "answered" | "handoff" | "closed";
 export type Channel = "web" | "sms" | "ussd" | "voice";
@@ -7,6 +8,8 @@ export interface MobilePayment {
   id: string;
   provider: Provider;
   phone: string;
+  country: string;
+  wallet: string;
   amount: number;
   currency: string;
   status: PaymentStatus;
@@ -55,16 +58,17 @@ export interface MessageLog {
   createdAt: Date;
 }
 
-export type NewPayment = Pick<MobilePayment, "provider" | "phone" | "amount" | "purpose" | "channel"> & { currency?: string };
+export type NewPayment = Pick<MobilePayment, "provider" | "phone" | "country" | "wallet" | "amount" | "currency" | "purpose" | "channel">;
 export type PaymentPatch = Partial<Pick<MobilePayment, "status" | "providerRef" | "merchantRef" | "receipt" | "failureReason">>;
 export type StudentPatch = Partial<Pick<Student, "name" | "school" | "optedIn" | "lessonIndex" | "quizPending" | "points">>;
 export type TicketPatch = Partial<Pick<AgentTicket, "answer" | "status">>;
 
 export interface PaymentTotals {
-  paidKes: number;
   paidCount: number;
   pendingCount: number;
-  byProvider: Record<Provider, { paidKes: number; paidCount: number }>;
+  countries: string[];
+  /** Paid amounts per currency; gifts arrive in many currencies and are never summed across them. */
+  byCurrency: Record<string, { amount: number; count: number }>;
 }
 
 export interface Store {

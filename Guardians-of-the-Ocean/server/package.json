@@ -2,7 +2,7 @@
   "name": "guardians-stripe",
   "private": true,
   "version": "1.0.0",
-  "description": "Harmony API: Stripe card checkout, M-Pesa and Airtel Money STK push, and SMS / USSD / voice access for students",
+  "description": "Harmony API: Stripe card checkout, pan-African mobile money (pawaPay, M-Pesa Daraja, Airtel) and SMS / USSD / voice access for students",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "test": "tsx --test src/test/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check:webhooks": "node scripts/webhookcheck.mjs"
   },
   "engines": {
     "node": ">=20"

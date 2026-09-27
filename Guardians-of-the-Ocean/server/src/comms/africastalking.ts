@@ -1,5 +1,5 @@
 import type { Env, Mode } from "../env.js";
-import { e164, maskPhone, normalizeKePhone } from "../lib/phone.js";
+import { e164, maskPhone, normalizePhone } from "../lib/phone.js";
 import { forSms } from "../lib/text.js";
 import type { Store } from "../store/types.js";
 
@@ -59,7 +59,7 @@ export class AfricasTalking implements Messenger {
 
   async sendSms(rawPhone: string, message: string): Promise<{ ok: boolean; id: string | null }> {
     const body = forSms(message);
-    const phone = normalizeKePhone(rawPhone);
+    const phone = normalizePhone(rawPhone);
     const to = e164(phone);
     if (!to || !body) return { ok: false, id: null };
 
@@ -99,7 +99,7 @@ export class AfricasTalking implements Messenger {
   }
 
   async call(rawPhone: string, tag: string): Promise<{ ok: boolean }> {
-    const phone = normalizeKePhone(rawPhone);
+    const phone = normalizePhone(rawPhone);
     const to = e164(phone);
     if (!to) return { ok: false };
 

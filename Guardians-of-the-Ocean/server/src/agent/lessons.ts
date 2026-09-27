@@ -20,8 +20,8 @@ export const LESSONS: Lesson[] = [
     title: "Mangroves",
     keywords: ["mangrove", "mikoko", "roots", "erosion", "nursery"],
     ussd: "Mangroves: their roots trap mud and slow waves, so the shore washes away less. Young fish shelter between the roots.",
-    sms: "Harmony lesson - Mangroves: their tangled roots trap mud and slow incoming waves, so the shore erodes less during storms. Young fish and crabs shelter between the roots, which helps local fishing. Kenya's coast has mangrove forests from Vanga to Lamu.",
-    voice: "Today's lesson is about mangroves. Mangrove roots trap mud and slow down waves, so the shore washes away less during storms. Young fish and crabs hide between the roots, which keeps fishing healthy. Kenya has mangrove forests along the coast from Vanga to Lamu.",
+    sms: "Harmony lesson - Mangroves: their tangled roots trap mud and slow incoming waves, so the shore erodes less during storms. Young fish and crabs shelter between the roots, which helps local fishing. Mangrove forests line Africa's coasts from Senegal to Mozambique.",
+    voice: "Today's lesson is about mangroves. Mangrove roots trap mud and slow down waves, so the shore washes away less during storms. Young fish and crabs hide between the roots, which keeps fishing healthy. Mangrove forests line Africa's coasts, from Senegal to Mozambique.",
     quiz: { q: "How do mangroves protect the shore?", options: ["Roots slow waves", "They make sand", "They block rain"], answer: 0, why: "Roots trap mud and slow waves." },
   },
   {

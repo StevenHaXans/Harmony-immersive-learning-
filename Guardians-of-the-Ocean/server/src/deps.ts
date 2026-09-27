@@ -15,7 +15,7 @@ export interface Deps {
   agent: Agent;
   desk: Desk;
   /** Present for providers running in practice mode, so the simulator can answer their prompts. */
-  mocks: Partial<Record<"mpesa" | "airtel", MockMoney>>;
+  mocks: Partial<Record<"mpesa" | "airtel" | "pawapay", MockMoney>>;
   /** Fire-and-forget work (SMS answers after a USSD session ends). Tests await it via drain(). */
   background(task: () => Promise<unknown>): void;
 }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { maskPhone, networkOf, normalizeKePhone, prettyPhone } from "../lib/phone.js";
+import { maskPhone, networkOf, normalizePhone, prettyPhone } from "../lib/phone.js";
 import { fitTo, forSms, isGsm7, plainText, toGsm7 } from "../lib/text.js";
 import { RateLimiter } from "../lib/rate.js";
 import { darajaPassword, darajaTimestamp, parseStkCallback } from "../payments/mpesa.js";
@@ -13,11 +13,11 @@ import { USSD_MAX } from "../lib/text.js";
 
 test("normalizes Kenyan numbers in every common format", () => {
   for (const raw of ["0712345678", "+254712345678", "254712345678", "712345678", "0712 345 678", "00254712345678", "(0712)-345-678"]) {
-    assert.equal(normalizeKePhone(raw), "254712345678", raw);
+    assert.equal(normalizePhone(raw), "254712345678", raw);
   }
-  assert.equal(normalizeKePhone("0110123456"), "254110123456");
-  for (const bad of ["", "12345", "0612345678", "+255712345678", "07123456789", null, undefined]) {
-    assert.equal(normalizeKePhone(bad), "", String(bad));
+  assert.equal(normalizePhone("0110123456"), "254110123456");
+  for (const bad of ["", "12345", "0612345678", "+999712345678", "07123456789", null, undefined]) {
+    assert.equal(normalizePhone(bad), "", String(bad));
   }
 });
 

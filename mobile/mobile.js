@@ -29,46 +29,144 @@
     return '';
   }
 
-  function kes(n) { return 'KES ' + Math.round(n).toLocaleString('en-US'); }
+  function money(n, currency) { return currency + ' ' + Math.round(n).toLocaleString('en-US'); }
   function usd(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
 
-  // ── Phone numbers (mirrors server/src/lib/phone.ts) ──
-  var RANGES = {
-    safaricom: [[700, 729], [740, 746], [748, 748], [757, 759], [768, 769], [790, 799], [110, 115]],
-    airtel: [[730, 739], [750, 756], [762, 762], [780, 789], [100, 102]],
-    telkom: [[770, 779]]
-  };
-  function normalize(raw) {
-    var d = String(raw || '').replace(/[^\d+]/g, '').replace(/^\+/, '').replace(/\D/g, '');
-    if (d.indexOf('00254') === 0) d = d.slice(2);
-    if (d.charAt(0) === '0' && d.length === 10) d = '254' + d.slice(1);
-    if ((d.charAt(0) === '7' || d.charAt(0) === '1') && d.length === 9) d = '254' + d;
-    return /^254[17]\d{8}$/.test(d) ? d : '';
+  // ── Phone numbers for every supported country (mirrors server/src/lib/phone.ts) ──
+  var COUNTRIES = [];
+  var COUNTRY_KEY = 'harmony-country';
+
+  function countryBy(code) {
+    for (var i = 0; i < COUNTRIES.length; i++) if (COUNTRIES[i].code === code) return COUNTRIES[i];
+    return null;
   }
-  function networkOf(raw) {
-    var n = normalize(raw);
-    if (!n) return '';
-    var p = Number(n.slice(3, 6));
-    for (var net in RANGES) {
-      if (RANGES[net].some(function (r) { return p >= r[0] && p <= r[1]; })) return net;
+  function homeCode() { return store(COUNTRY_KEY) || (config && config.defaultCountry) || 'KE'; }
+  function countryOfDigits(d) {
+    var list = COUNTRIES.slice().sort(function (a, b) { return b.dial.length - a.dial.length; });
+    for (var i = 0; i < list.length; i++) {
+      var c = list[i];
+      if (d.indexOf(c.dial) !== 0 || c.nsn.indexOf(d.length - c.dial.length) < 0) continue;
+      var nsn = d.slice(c.dial.length);
+      if (!c.mobileStarts || c.mobileStarts.some(function (p) { return nsn.indexOf(p) === 0; })) return c;
     }
-    return 'unknown';
+    return null;
   }
-  var NET_LABEL = { safaricom: 'Safaricom', airtel: 'Airtel', telkom: 'Telkom', unknown: 'Kenya' };
+  /** E.164 digits without the plus, or '' when the number is not valid for a supported country. */
+  function normalize(raw, code) {
+    var text = String(raw || '').trim();
+    var intl = text.charAt(0) === '+' || text.indexOf('00') === 0;
+    var d = text.replace(/\D/g, '');
+    if (text.indexOf('00') === 0) d = d.slice(2);
+    if (!d || !COUNTRIES.length) return '';
+    if (intl) return countryOfDigits(d) ? d : '';
+    var home = countryBy(code || homeCode());
+    if (home) {
+      var local = home.trunk0 && d.charAt(0) === '0' ? d.slice(1) : d;
+      if (home.nsn.indexOf(local.length) >= 0 && !(home.trunk0 && local.charAt(0) === '0') && countryOfDigits(home.dial + local) === home) return home.dial + local;
+    }
+    return countryOfDigits(d) ? d : '';
+  }
+  /** { country, network } for a number, network null when the prefix is not known. */
+  function lookup(raw, code) {
+    var n = normalize(raw, code);
+    var c = n ? countryOfDigits(n) : null;
+    if (!c) return null;
+    var nsn = n.slice(c.dial.length);
+    var best = null;
+    c.networks.forEach(function (net) {
+      net.prefixes.forEach(function (p) {
+        if (nsn.indexOf(p) === 0 && (!best || p.length > best.len)) best = { net: net, len: p.length };
+      });
+    });
+    return { digits: n, country: c, network: best ? best.net : null };
+  }
+  function networkOf(raw, code) {
+    var l = lookup(raw, code);
+    return l ? (l.network ? l.network.id : 'unknown') : '';
+  }
+  function pretty(raw, code) {
+    var l = lookup(raw, code);
+    if (!l) return String(raw || '');
+    var nsn = l.digits.slice(l.country.dial.length);
+    if (l.country.code === homeCode() && l.country.trunk0) {
+      var local = '0' + nsn;
+      return local.slice(0, 4) + ' ' + local.slice(4, 7) + ' ' + local.slice(7);
+    }
+    var grouped = nsn.length <= 8 ? nsn.replace(/(\d{2})(?=\d)/g, '$1 ') : nsn.slice(0, 3) + ' ' + nsn.slice(3, 6) + ' ' + nsn.slice(6);
+    return '+' + l.country.dial + ' ' + grouped;
+  }
+  function example(c) {
+    var nsnLen = c.nsn[c.nsn.length - 1];
+    var first = c.networks.length && c.networks[0].prefixes.length ? c.networks[0].prefixes[0] : '';
+    var digits = (first + '1234567890').slice(0, nsnLen);
+    var local = (c.trunk0 ? '0' : '') + digits;
+    return local.replace(/^(\d{4})(\d{3})(\d+)$/, '$1 $2 $3');
+  }
+
+  // Every phone field gets a country picker; the chosen country reads local numbers.
+  var phoneFields = [];
+  function intl(input) {
+    var n = normalize(input.value, input.dataset.cc);
+    return n ? '+' + n : '';
+  }
+  function enhancePhone(input) {
+    var wrap = input.closest('.input-wrap');
+    if (!wrap || wrap.querySelector('.cc') || !COUNTRIES.length) return;
+    var label = document.createElement('label');
+    label.className = 'cc';
+    label.innerHTML = '<span class="cc-face" aria-hidden="true"></span><select aria-label="Country"></select>';
+    var sel = label.querySelector('select');
+    COUNTRIES.forEach(function (c) {
+      var o = document.createElement('option');
+      o.value = c.code;
+      o.textContent = c.flag + ' ' + c.name + ' (+' + c.dial + ')';
+      sel.appendChild(o);
+    });
+    wrap.classList.add('has-cc');
+    wrap.insertBefore(label, input);
+    function setCountry(code, fromTyping) {
+      var c = countryBy(code) || countryBy(homeCode());
+      sel.value = c.code;
+      input.dataset.cc = c.code;
+      label.querySelector('.cc-face').textContent = c.flag + ' +' + c.dial;
+      input.placeholder = example(c);
+      if (!fromTyping) input.dispatchEvent(new CustomEvent('cc-change'));
+    }
+    sel.addEventListener('change', function () {
+      store(COUNTRY_KEY, sel.value);
+      phoneFields.forEach(function (f) { if (f !== input && !f.value) f.setCountry(sel.value); });
+      setCountry(sel.value);
+      input.dispatchEvent(new Event('input'));
+      input.focus();
+    });
+    input.addEventListener('input', function () {
+      // Typing +256... switches the picker to Uganda.
+      if (/^\s*(\+|00)/.test(input.value)) {
+        var l = lookup(input.value);
+        if (l && l.country.code !== input.dataset.cc) setCountry(l.country.code, true), input.dispatchEvent(new CustomEvent('cc-change'));
+      }
+    });
+    input.setCountry = setCountry;
+    phoneFields.push(input);
+    setCountry(input.dataset.cc || homeCode(), true);
+  }
 
   function bindPhone(input, onNetwork) {
     var badge = document.querySelector('[data-net-for="' + input.id + '"]');
     function update() {
-      var net = networkOf(input.value);
+      var l = lookup(input.value, input.dataset.cc);
       if (badge) {
-        badge.className = 'net-badge' + (net ? ' show ' + net : '');
-        badge.querySelector('b').textContent = net ? NET_LABEL[net] : '';
+        var cls = l ? (l.network ? l.network.id : 'unknown') : '';
+        badge.className = 'net-badge' + (l ? ' show ' + cls : '');
+        badge.querySelector('b').textContent = l ? (l.network ? l.network.name : l.country.name) : '';
       }
-      if (net) store(PHONE_KEY, input.value.trim());
-      if (onNetwork) onNetwork(net);
+      if (l) store(PHONE_KEY, '+' + l.digits);
+      if (onNetwork) onNetwork(l);
     }
     input.addEventListener('input', update);
+    input.addEventListener('cc-change', update);
     if (!input.value) input.value = store(PHONE_KEY);
+    input.refreshPhone = update;
     update();
     return update;
   }
@@ -168,15 +266,28 @@
     }
 
     var m = config.modes;
-    var practice = [m.sms, m.mpesa, m.airtel].indexOf('mock') >= 0;
-    var sandbox = [m.sms, m.mpesa, m.airtel].indexOf('sandbox') >= 0;
+    var rails = [m.sms, m.mpesa, m.airtel, m.pawapay];
+    var practice = rails.indexOf('mock') >= 0;
+    var sandbox = rails.indexOf('sandbox') >= 0;
     $('modeText').textContent = practice ? 'Practice mode' : sandbox ? 'Sandbox' : 'Live';
     $('modePill').classList.toggle('practice', practice || sandbox);
-    $('modePill').title = 'SMS: ' + m.sms + ' · Voice: ' + m.voice + ' · M-Pesa: ' + m.mpesa + ' · Airtel: ' + m.airtel + ' · Card: ' + (m.stripe ? 'on' : 'off');
+    $('modePill').title = 'SMS: ' + m.sms + ' · Voice: ' + m.voice + ' · M-Pesa: ' + m.mpesa + ' · Airtel: ' + m.airtel +
+      ' · pawaPay (20 countries): ' + m.pawapay + ' · Card: ' + (m.stripe ? 'on' : 'off');
+
+    COUNTRIES = config.countries || [];
+    ['joinPhone', 'askPhone', 'humanPhone', 'payPhone'].forEach(function (id) {
+      var el = $(id);
+      enhancePhone(el);
+      if (el.value && !normalize(el.value, el.dataset.cc)) {
+        var l = lookup(el.value);
+        if (l) el.setCountry(l.country.code, true);
+      }
+      if (el.refreshPhone) el.refreshPhone();
+    });
+    $('countryCount').textContent = String(COUNTRIES.length);
 
     renderLessons(config.lessons || []);
-    setupMethods();
-    renderAmounts();
+    setupSupport();
     loadLedger();
     document.dispatchEvent(new CustomEvent('harmony:config', { detail: config }));
   }
@@ -202,15 +313,15 @@
     e.preventDefault();
     var btn = $('joinBtn');
     showError($('joinErr'), '');
-    if (!normalize($('joinPhone').value)) {
-      showError($('joinErr'), 'Enter a Kenyan mobile number, e.g. 0712 345 678.');
+    if (!intl($('joinPhone'))) {
+      showError($('joinErr'), 'Enter a valid mobile number for the country you picked.');
       $('joinPhone').focus();
       return;
     }
     busy(btn, true);
     try {
       var res = await api('POST', '/api/students/join', {
-        phone: $('joinPhone').value,
+        phone: intl($('joinPhone')),
         name: $('joinName').value.trim() || undefined,
         school: $('joinSchool').value.trim() || undefined
       });
@@ -265,9 +376,9 @@
     askSend.disabled = true;
     var wait = bubble('bot');
     wait.innerHTML = '<span class="typing" aria-label="Thinking"><i></i><i></i><i></i></span>';
-    var wantSms = $('smsToggle').checked && normalize($('askPhone').value);
+    var wantSms = $('smsToggle').checked && intl($('askPhone'));
     try {
-      var res = await api('POST', '/api/agent/ask', { question: question, phone: wantSms ? $('askPhone').value : undefined, sms: !!wantSms });
+      var res = await api('POST', '/api/agent/ask', { question: question, phone: wantSms || undefined, sms: !!wantSms });
       wait.textContent = res.text;
       var meta = document.createElement('div');
       meta.className = 'meta';
@@ -339,14 +450,14 @@
   $('humanForm').addEventListener('submit', async function (e) {
     e.preventDefault();
     showError($('humanErr'), '');
-    if (!normalize($('humanPhone').value)) {
-      showError($('humanErr'), 'Enter a Kenyan mobile number, e.g. 0712 345 678.');
+    if (!intl($('humanPhone'))) {
+      showError($('humanErr'), 'Enter a valid mobile number for the country you picked.');
       return;
     }
     var btn = $('humanBtn');
     busy(btn, true);
     try {
-      var res = await api('POST', '/api/agent/callback', { phone: $('humanPhone').value, question: $('humanQuestion').value.trim() || undefined });
+      var res = await api('POST', '/api/agent/callback', { phone: intl($('humanPhone')), question: $('humanQuestion').value.trim() || undefined });
       $('humanOkTitle').textContent = res.calling ? 'A guide will call you' : 'A guide has your question';
       $('humanOkText').textContent = (res.calling
         ? 'Keep your phone nearby. The call is free. '
@@ -361,61 +472,114 @@
     }
   });
 
-  // ── Support: method, amount, pay ──
-  var method = 'mpesa';
-  var amount = 100;
+  // ── Support: country, wallet, amount, pay ──
+  var method = null;
+  var amount = 0;
   var other = false;
-  var LABEL = { mpesa: 'M-Pesa', airtel: 'Airtel Money', card: 'Card' };
-  var methodBtns = [].slice.call(document.querySelectorAll('.method'));
+  var payCountry = null;
+  var WALLET_COLORS = { mpesa: '#2fb964', airtel: '#ee3a3f', mtn: '#ffcb05', orange: '#ff7900', moov: '#0066b3', free: '#d7141a',
+    tigo: '#00377b', halopesa: '#f58220', telecel: '#e60000', airteltigo: '#1b3f94', zamtel: '#009a44', tnm: '#00a3e0', emola: '#e2001a' };
 
-  function setupMethods() {
-    var avail = (config && config.available) || { mpesa: true, airtel: true, card: false };
-    methodBtns.forEach(function (b) {
-      var ok = !!avail[b.dataset.method];
-      b.disabled = !ok;
-      var soon = b.querySelector('.soon');
-      if (!ok && !soon) {
-        soon = document.createElement('span');
+  function walletsOf(c) { return c ? c.wallets : []; }
+  function walletBy(id) {
+    var w = walletsOf(payCountry).filter(function (x) { return x.id === id; });
+    return w[0] || null;
+  }
+  function methodLabel() { return method === 'card' ? 'Card' : (walletBy(method) || {}).label || 'Mobile money'; }
+  function currency() { return method === 'card' ? 'USD' : (payCountry ? payCountry.currency : 'KES'); }
+
+  function setupSupport() {
+    var input = $('payPhone');
+    var l = lookup(input.value, input.dataset.cc);
+    setPayCountry(l ? l.country : countryBy(input.dataset.cc || homeCode()), l && l.network ? l.network.id : null);
+  }
+
+  function setPayCountry(c, networkId) {
+    if (!c) return;
+    var changed = !payCountry || payCountry.code !== c.code;
+    payCountry = c;
+    if (changed) {
+      var byNet = networkId && walletsOf(c).filter(function (w) { return w.network === networkId && w.available; })[0];
+      var first = walletsOf(c).filter(function (w) { return w.available; })[0];
+      method = byNet ? byNet.id : first ? first.id : (config && config.available.card ? 'card' : null);
+      amount = c.amounts[1] || c.amounts[0];
+      other = false;
+    }
+    renderMethods();
+    applyMethod();
+  }
+
+  function renderMethods() {
+    var wrap = $('methods');
+    wrap.innerHTML = '';
+    var list = walletsOf(payCountry).map(function (w) {
+      return { id: w.id, label: w.label, sub: (payCountry.networks.filter(function (n) { return n.id === w.network; })[0] || {}).name || payCountry.name, available: w.available };
+    });
+    list.push({ id: 'card', label: 'Card', sub: 'Visa · Mastercard', available: !!(config && config.available.card) });
+    list.forEach(function (m) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'method';
+      b.setAttribute('role', 'radio');
+      b.dataset.method = m.id;
+      b.setAttribute('aria-checked', m.id === method ? 'true' : 'false');
+      b.disabled = !m.available;
+      var logo = document.createElement('span');
+      logo.className = 'logo';
+      if (m.id === 'card') {
+        logo.style.background = 'var(--card)';
+        logo.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>';
+      } else {
+        logo.style.background = WALLET_COLORS[m.id] || 'var(--teal)';
+        logo.style.color = m.id === 'mtn' ? '#1b1b1b' : '#fff';
+        logo.textContent = m.label.charAt(0);
+      }
+      var name = document.createElement('b');
+      name.textContent = m.label;
+      var sub = document.createElement('small');
+      sub.textContent = m.sub;
+      b.appendChild(logo);
+      b.appendChild(name);
+      b.appendChild(sub);
+      if (!m.available) {
+        var soon = document.createElement('span');
         soon.className = 'soon';
         soon.textContent = 'Soon';
         b.appendChild(soon);
-      } else if (ok && soon) {
-        soon.remove();
       }
+      b.addEventListener('click', function () {
+        if (b.disabled) return;
+        var wasCard = method === 'card';
+        method = m.id;
+        if ((m.id === 'card') !== wasCard) {
+          amount = m.id === 'card' ? 10 : (payCountry.amounts[1] || payCountry.amounts[0]);
+          other = false;
+        }
+        renderMethods();
+        applyMethod();
+      });
+      wrap.appendChild(b);
     });
-    if (!avail[method]) {
-      var first = methodBtns.find(function (b) { return !b.disabled; });
-      if (first) setMethod(first.dataset.method);
-    }
   }
 
-  function setMethod(next, fromNetwork) {
-    if (method === next) return;
-    method = next;
-    methodBtns.forEach(function (b) { b.setAttribute('aria-checked', b.dataset.method === next ? 'true' : 'false'); });
-    var card = next === 'card';
+  function applyMethod() {
+    var card = method === 'card';
     $('payPhoneField').classList.toggle('hidden', card);
     $('payEmailField').classList.toggle('hidden', !card);
-    $('payPhoneLabel').textContent = LABEL[next] + ' number';
-    $('payBtn').className = 'btn block ' + next;
+    $('payPhoneLabel').textContent = card ? 'Phone' : methodLabel() + ' number';
+    var tone = card ? 'card' : method === 'mpesa' ? 'mpesa' : method === 'airtel' ? 'airtel' : '';
+    $('payBtn').className = 'btn block ' + tone;
+    $('payBtn').disabled = !method;
     $('secureText').textContent = card
       ? 'Card details are entered on Stripe\'s secure page. We never see them.'
       : 'You approve with your PIN on your own phone. We never see it.';
-    if (!fromNetwork) {
-      amount = card ? 10 : 100;
-      other = false;
-    }
     renderAmounts();
     showError($('payErr'), '');
   }
-  methodBtns.forEach(function (b) {
-    b.addEventListener('click', function () { if (!b.disabled) setMethod(b.dataset.method); });
-  });
 
   function renderAmounts() {
-    var list = method === 'card'
-      ? ((config && config.amounts.usd) || [5, 10, 25, 50, 100])
-      : ((config && config.amounts.kes) || [50, 100, 250, 500, 1000]);
+    var card = method === 'card';
+    var list = card ? ((config && config.amounts.usd) || [5, 10, 25, 50, 100]) : (payCountry ? payCountry.amounts : []);
     var wrap = $('amounts');
     wrap.innerHTML = '';
     list.forEach(function (v) {
@@ -424,8 +588,12 @@
       b.className = 'amount';
       b.setAttribute('role', 'radio');
       b.setAttribute('aria-checked', !other && v === amount ? 'true' : 'false');
-      b.innerHTML = method === 'card' ? '' : '<small>KES</small>';
-      b.appendChild(document.createTextNode(method === 'card' ? usd(v) : v.toLocaleString('en-US')));
+      if (!card) {
+        var cur = document.createElement('small');
+        cur.textContent = currency();
+        b.appendChild(cur);
+      }
+      b.appendChild(document.createTextNode(card ? usd(v) : v.toLocaleString('en-US')));
       b.addEventListener('click', function () { amount = v; other = false; renderAmounts(); });
       wrap.appendChild(b);
     });
@@ -438,8 +606,8 @@
     o.addEventListener('click', function () { other = true; renderAmounts(); $('otherAmount').focus(); });
     wrap.appendChild(o);
     $('otherField').classList.toggle('hidden', !other);
-    var min = method === 'card' ? 1 : ((config && config.amounts.min) || 10);
-    $('otherHint').textContent = method === 'card' ? 'in US dollars' : 'min ' + kes(min);
+    var min = card ? 1 : (payCountry ? payCountry.min : 1);
+    $('otherHint').textContent = card ? 'in US dollars' : 'in ' + currency() + ', min ' + money(min, currency());
     $('otherAmount').min = String(min);
     updateTotal();
   }
@@ -449,16 +617,23 @@
   }
   function updateTotal() {
     var a = currentAmount();
-    $('payTotal').textContent = method === 'card' ? usd(a) : kes(a);
-    $('payBtnText').textContent = method === 'card' ? 'Pay ' + usd(a) + ' by card' : 'Send ' + LABEL[method] + ' prompt';
+    var card = method === 'card';
+    $('payTotal').textContent = card ? usd(a) : money(a, currency());
+    $('payBtnText').textContent = !method ? 'Not available here yet' : card ? 'Pay ' + usd(a) + ' by card' : 'Send ' + methodLabel() + ' prompt';
   }
   $('otherAmount').addEventListener('input', updateTotal);
 
-  bindPhone($('payPhone'), function (net) {
-    // A Safaricom number means M-Pesa, an Airtel number means Airtel Money.
-    if (method === 'card') return;
-    if (net === 'safaricom' && method !== 'mpesa' && !$('payPhoneField').classList.contains('hidden')) setMethod('mpesa', true);
-    if (net === 'airtel' && method !== 'airtel') setMethod('airtel', true);
+  bindPhone($('payPhone'), function (l) {
+    if (!COUNTRIES.length) return;
+    var input = $('payPhone');
+    var c = l ? l.country : countryBy(input.dataset.cc);
+    if (!c) return;
+    if (!payCountry || payCountry.code !== c.code) return setPayCountry(c, l && l.network ? l.network.id : null);
+    // A Safaricom number means M-Pesa, an MTN number means MTN MoMo, and so on.
+    if (method !== 'card' && l && l.network) {
+      var own = walletsOf(c).filter(function (w) { return w.network === l.network.id && w.available; })[0];
+      if (own && own.id !== method) { method = own.id; renderMethods(); applyMethod(); }
+    }
   });
 
   $('payForm').addEventListener('submit', async function (e) {
@@ -466,6 +641,7 @@
     showError($('payErr'), '');
     var a = currentAmount();
     var btn = $('payBtn');
+    if (!method) return;
 
     if (method === 'card') {
       var email = $('payEmail').value.trim();
@@ -476,20 +652,21 @@
         var session = await api('POST', '/api/checkout', { email: email, amount: a * 100, currency: 'usd' });
         location.href = session.url;
       } catch (err) {
-        showError($('payErr'), err.status === 503 ? 'Card payments are not switched on yet. Please use M-Pesa or Airtel Money.' : err.message);
+        showError($('payErr'), err.status === 503 ? 'Card payments are not switched on yet. Please use mobile money.' : err.message);
         busy(btn, false);
       }
       return;
     }
 
-    var min = (config && config.amounts.min) || 10;
-    var max = (config && config.amounts.max) || 150000;
-    if (!normalize($('payPhone').value)) return showError($('payErr'), 'Enter your ' + LABEL[method] + ' number, e.g. 0712 345 678.');
-    if (!(a >= min && a <= max)) return showError($('payErr'), 'Choose an amount between ' + kes(min) + ' and ' + kes(max) + '.');
+    var phone = intl($('payPhone'));
+    if (!phone) return showError($('payErr'), 'Enter your ' + methodLabel() + ' number for ' + payCountry.name + ', e.g. ' + example(payCountry) + '.');
+    if (!(a >= payCountry.min && a <= payCountry.max)) {
+      return showError($('payErr'), 'Choose an amount between ' + money(payCountry.min, currency()) + ' and ' + money(payCountry.max, currency()) + '.');
+    }
 
     busy(btn, true);
     try {
-      var res = await api('POST', '/api/pay/mobile', { phone: $('payPhone').value, amount: a, provider: method });
+      var res = await api('POST', '/api/pay/mobile', { phone: phone, amount: a, wallet: method });
       openPayment(res.payment);
     } catch (err) {
       showError($('payErr'), err.message);
@@ -568,7 +745,7 @@
     if (p.status === 'paid') {
       stk.innerHTML =
         '<div class="result-ico ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>' +
-        '<h3 id="stkTitle">Asante! Payment confirmed</h3><p>Your support is planting mangroves on Kenya\'s coast. A receipt is on its way by SMS.</p>' +
+        '<h3 id="stkTitle">Thank you! Payment confirmed</h3><p>Your support is planting mangroves on Africa\'s coasts. A receipt is on its way by SMS.</p>' +
         '<div class="receipt"><div><span>Amount</span><b></b></div><div><span>Method</span><b></b></div><div><span>Receipt</span><b></b></div><div><span>Phone</span><b></b></div></div>' +
         '<button class="btn block" type="button" data-close style="margin-top:14px">Done</button>';
       var r = stk.querySelectorAll('.receipt b');
@@ -611,13 +788,16 @@
   async function loadLedger() {
     try {
       var ledger = await api('GET', '/api/mobile/ledger');
-      var goal = (config && config.goalKes) || 100000;
-      $('raised').textContent = ledger.paid.label;
-      $('supporters').textContent = ledger.paid.count
-        ? ledger.paid.count + (ledger.paid.count === 1 ? ' gift' : ' gifts') + ' · goal ' + kes(goal)
-        : 'Goal ' + kes(goal);
-      var pct = Math.min(100, Math.round((ledger.paid.amount / goal) * 100));
-      $('meterFill').style.width = Math.max(pct, ledger.paid.amount ? 2 : 0) + '%';
+      var goal = (config && config.goalGifts) || 500;
+      var labels = ledger.byCurrency.slice(0, 3).map(function (x) { return x.label; });
+      $('raised').textContent = labels.length ? labels.join(' · ') : 'Be the first';
+      $('raisedSuffix').textContent = labels.length ? ' raised by phone' : ' to give by phone';
+      var countries = ledger.countries.length;
+      $('supporters').textContent = ledger.gifts
+        ? ledger.gifts + (ledger.gifts === 1 ? ' gift' : ' gifts') + ' from ' + countries + (countries === 1 ? ' country' : ' countries') + ' · goal ' + goal
+        : 'Goal: ' + goal + ' gifts';
+      var pct = Math.min(100, Math.round((ledger.gifts / goal) * 100));
+      $('meterFill').style.width = Math.max(pct, ledger.gifts ? 2 : 0) + '%';
       $('meter').setAttribute('aria-valuenow', String(pct));
     } catch (e) {}
   }
@@ -627,8 +807,13 @@
     ['payPhone', 'joinPhone', 'humanPhone', 'askPhone'].forEach(function (id) {
       var el = $(id);
       if (el && !el.dataset.touched) {
-        el.value = e.detail.pretty;
+        el.value = '+' + e.detail.phone;
+        var l = lookup(el.value);
+        if (l && el.setCountry) el.setCountry(l.country.code, true);
+        el.value = pretty(el.value, l ? l.country.code : undefined);
+        if (l && l.country.code !== homeCode()) el.value = '+' + e.detail.phone;
         el.dispatchEvent(new Event('input'));
+        el.dispatchEvent(new CustomEvent('cc-change'));
       }
     });
   });
@@ -636,7 +821,10 @@
     $(id).addEventListener('keydown', function () { $(id).dataset.touched = '1'; });
   });
 
-  window.HarmonyApp = { api: api, normalize: normalize, networkOf: networkOf, config: function () { return config; }, loadLedger: loadLedger };
+  window.HarmonyApp = {
+    api: api, normalize: normalize, networkOf: networkOf, lookup: lookup, pretty: pretty,
+    config: function () { return config; }, loadLedger: loadLedger
+  };
 
   fromHash();
   loadConfig();
