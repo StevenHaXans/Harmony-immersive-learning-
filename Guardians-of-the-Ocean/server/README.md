@@ -55,6 +55,7 @@ See `.env.example` for the full list. The main groups:
 | `DEV_TOOLS` | Simulator and practice payments. On by default outside production. In production it stays on only while no real gateway is configured. |
 | `STRIPE_*`, `CHECKOUT_*` | Card checkout, unchanged. |
 | `AT_USERNAME`, `AT_API_KEY`, `AT_SMS_FROM`, `AT_VOICE_NUMBER`, `USSD_CODE`, `SMS_SHORTCODE` | Africa's Talking. |
+| `CLICKMOBILE_SMS_URL`, `CLICKMOBILE_API_KEY`, `CLICKMOBILE_SENDER` | Click Mobile, the fallback SMS gateway: a failed Africa's Talking SMS is sent again through it. The request shape is a placeholder until Click Mobile issues API access (`src/comms/clickmobile.ts`). |
 | `MPESA_*` | Daraja app keys, shortcode and passkey. `MPESA_TYPE=till` for Buy Goods. |
 | `AIRTEL_*` | Airtel Africa collection app. |
 | `AQUA_ASK_URL`, `GOOGLE_API_KEY`, `AGENT_PHONES` | The agent, voice transcription, and the human guides. |
@@ -63,7 +64,7 @@ See `.env.example` for the full list. The main groups:
 
 | Need | Primary | Fallback / alternative |
 | --- | --- | --- |
-| SMS, USSD, voice | **Africa's Talking**: self-serve, sandbox, multi-country | **Click Mobile** as the fallback gateway, once its API and keys are issued (no public docs or sandbox yet). The `Messenger` interface is where it plugs in. |
+| SMS, USSD, voice | **Africa's Talking**: self-serve, sandbox, multi-country | **Click Mobile** as the fallback SMS gateway (`WithSmsFallback` in `src/comms/clickmobile.ts`). It switches on when its URL and key are set; confirm the request shape once Click Mobile issues API access (no public docs or sandbox yet). |
 | M-Pesa (Kenya) | **Safaricom Daraja**, M-Pesa Express STK push | none (practice mode in development) |
 | Other mobile money | **pawaPay** in 20 countries | Airtel Kenya direct |
 | Cards | Stripe | none |

@@ -7,6 +7,7 @@ import { errorHandler, HttpError } from "./http.js";
 import { Agent } from "./agent/agent.js";
 import { Desk } from "./agent/desk.js";
 import { AfricasTalking, type Messenger } from "./comms/africastalking.js";
+import { ClickMobile, WithSmsFallback } from "./comms/clickmobile.js";
 import type { Deps } from "./deps.js";
 import { Airtel } from "./payments/airtel.js";
 import { MockMoney } from "./payments/mock.js";
@@ -39,7 +40,7 @@ export async function buildApp(env: Env, overrides: AppOverrides = {}): Promise<
   setDefaultCountry(env.DEFAULT_COUNTRY);
   const fetchImpl = overrides.fetchImpl ?? fetch;
   const store = overrides.store ?? (await createStore(env));
-  const messenger = overrides.messenger ?? new AfricasTalking(env, store, fetchImpl);
+  const messenger = overrides.messenger ?? new WithSmsFallback(new AfricasTalking(env, store, fetchImpl), new ClickMobile(env, store, fetchImpl));
 
   const mocks: Deps["mocks"] = {};
   function rail(name: Provider): MobileMoney {
@@ -108,6 +109,7 @@ export async function buildApp(env: Env, overrides: AppOverrides = {}): Promise<
       store: store.kind,
       stripe: env.stripeEnabled,
       sms: messenger.smsMode,
+      smsFallback: env.CLICKMOBILE_SMS_URL && env.CLICKMOBILE_API_KEY ? "clickmobile" : "none",
       voice: messenger.voiceMode,
       mpesa: providers.mpesa.mode,
       airtel: providers.airtel.mode,

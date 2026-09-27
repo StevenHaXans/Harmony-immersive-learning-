@@ -122,6 +122,12 @@ services:
         sync: false
       - key: AT_VOICE_NUMBER
         sync: false
+      - key: CLICKMOBILE_SMS_URL
+        sync: false
+      - key: CLICKMOBILE_API_KEY
+        sync: false
+      - key: CLICKMOBILE_SENDER
+        sync: false
       - key: USSD_CODE
         value: "*384*2026#"
       - key: SMS_SHORTCODE

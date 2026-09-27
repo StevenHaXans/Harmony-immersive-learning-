@@ -41,6 +41,10 @@ const envSchema = z.object({
   AT_API_KEY: text,
   AT_SMS_FROM: text,
   AT_VOICE_NUMBER: text,
+  // Click Mobile: fallback SMS gateway, used when Africa's Talking cannot deliver a message.
+  CLICKMOBILE_SMS_URL: text,
+  CLICKMOBILE_API_KEY: text,
+  CLICKMOBILE_SENDER: text,
   USSD_CODE: z.string().optional().default("*384*2026#"),
   SMS_SHORTCODE: z.string().optional().default("22384"),
 

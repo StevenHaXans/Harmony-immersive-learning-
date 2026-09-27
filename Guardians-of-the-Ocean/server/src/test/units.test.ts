@@ -8,7 +8,10 @@ import { parseAirtelCallback } from "../payments/airtel.js";
 import { isAllowedRecordingUrl } from "../agent/transcribe.js";
 import { LESSONS, matchLesson, quizText } from "../agent/lessons.js";
 import { Agent, isRelevant } from "../agent/agent.js";
-import { aquaRoutes, fakeFetch, testEnv } from "./helpers.js";
+import { aquaRoutes, fakeFetch, json, testEnv } from "./helpers.js";
+import { AfricasTalking } from "../comms/africastalking.js";
+import { ClickMobile, WithSmsFallback } from "../comms/clickmobile.js";
+import { MemoryStore } from "../store/memory.js";
 import { USSD_MAX } from "../lib/text.js";
 
 test("normalizes Kenyan numbers in every common format", () => {
@@ -152,4 +155,18 @@ test("possible emergencies lead with 'go to a health facility now'", async () =>
   const fits = await agent.answer("My brother has fits and cannot drink", 440);
   assert.match(fits.text, /Danger signs: go to a health facility now/);
   assert.doesNotMatch(fits.text, /Safe water/);
+});
+
+test("a failed Africa's Talking SMS is retried through Click Mobile", async () => {
+  const env = testEnv({ AT_USERNAME: "sandbox", AT_API_KEY: "k", CLICKMOBILE_SMS_URL: "http://click.test/sms", CLICKMOBILE_API_KEY: "ck" });
+  const { impl, calls } = fakeFetch({
+    "africastalking.com": () => json({ SMSMessageData: { Recipients: [{ status: "InvalidSenderId" }] } }),
+    "click.test/sms": () => json({ messageId: "cm_1" }),
+  });
+  const store = new MemoryStore();
+  const messenger = new WithSmsFallback(new AfricasTalking(env, store, impl), new ClickMobile(env, store, impl));
+  assert.deepEqual(await messenger.sendSms("0712345678", "Harmony: test"), { ok: true, id: "cm_1" });
+  const click = calls.find((c) => c.url.includes("click.test"))!;
+  assert.equal((click.init?.headers as Record<string, string>).Authorization, "Bearer ck");
+  assert.deepEqual(JSON.parse(String(click.init?.body)), { to: "+254712345678", message: "Harmony: test" });
 });
